@@ -1,0 +1,25 @@
+```latex
+\section*{Example 1}
+
+Assume $\phi(x) = 0$ and $\psi(x) = \cos x$. Then
+
+\begin{align*}
+    u(x, t) &= \frac{1}{2} \int_{x-t}^{x+t} \psi(s) \, ds \\
+    &= \frac{1}{2} \int_{x-t}^{x+t} \cos s \, ds \\
+    &= \frac{1}{2} \left[ \sin(x+t) - \sin(x-t) \right] \\
+    &= \sin x \cos t + \cos x \sin t.
+\end{align*}
+
+\section*{Example}
+
+The Plucked String
+
+Assume $\phi(x) = 0$ and $\psi(x) = 1$. Then
+
+\begin{align*}
+    u(x, t) &= \frac{1}{2} \left[ \phi(x+ct) + \phi(x-ct) \right] + \frac{1}{2c} \int_{x-ct}^{x+ct} \psi(s) \, ds \\
+    &= \frac{1}{2c} \int_{x-ct}^{x+ct} 1 \, ds \\
+    &= \frac{1}{2c} \left[ (x+ct) - (x-ct) \right] \\
+    &= t.
+\end{align*}
+```

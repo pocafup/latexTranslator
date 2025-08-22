@@ -1,0 +1,40 @@
+```latex
+\section*{Proof}
+
+What if at some point in the interior of $\mathbb{R}$ that reaches the maximum value of $U(x, y)$, then $(x_0, y_0)$ satisfies $U_x(x_0, y_0) = 0$.
+
+The Hessian matrix is given by:
+
+\[
+\begin{bmatrix}
+U_{xx} & U_{xy} \\
+U_{xy} & U_{yy}
+\end{bmatrix}
+\]
+
+For a maximum, the Hessian must be negative definite, which is equivalent to:
+
+\[
+U_{xx} < 0 \quad \text{and} \quad U_{xx}U_{yy} - U_{xy}^2 > 0
+\]
+
+At $(x_0, y_0)$, we have:
+
+\[
+U_{xx}U_{yy} - U_{xy}^2 > 0
+\]
+
+Let $v(x, t) = u(x, t) + 2x^2$. Then:
+
+\[
+u_x = R U_x = R U_{xx} - 2kE
+\]
+
+And:
+
+\[
+U_{xx} + 2k
+\]
+
+This leads to a contradiction if $U(x_0, y_0) \neq 0$.
+```

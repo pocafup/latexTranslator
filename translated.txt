@@ -1,0 +1,803 @@
+
+
+<!-- p002_c01 page 2 -->
+
+- Algebra
+- Geometry
+- Calculculus
+
+(IABDE, 140 ABC, 3D)
+
+
+PDE = Partial Differential Equation
+
+ODE = Ordinary Differential Equations and its derivatives
+
+
+-
+An equation contains unknown function(s) of 1-variable.
+
+x + 2x + 3 = 52X
+f(x) + si f(x) = 5 (Not MODE)
+
+
+<!-- p003_c01 page 3 -->
+
+
+A partial differential equation is an equation that contains unknown functions and their partial derivatives.
+
+
+A first-order PDE can be written as:
+
+E(X, Y, u(x, y), ux(x, y), uy(x, y)) = 0
+
+or equivalently:
+
+F(X, Y, U, Ux, Uy) = 0
+
+
+<!-- p004_c01 page 4 -->
+- U is a function of (x, y)
+- Ux + My = 0
+
+- Ux + YUy = 0
+
+- Ux + UHy = 0
+
+Table: 
+| Term | Description |
+| --- | --- |
+| xx | Second partial derivative with respect to x |
+| yy | Second partial derivative with respect to y |
+
+- (xx + Hyy) = 0
+
+- Ut + UUx + Uxx = 0
+
+- UH + Nxx = 0
+
+- U - FU = O
+
+
+<!-- p005_c01 page 5 -->
+
+
+- `T(u + v) = T(u) + T(v)`
+- `T(au) = aT(u)`
+- `T(au + bv) = aT(u) + bT(v)`
+
+
+An operator L is called linear, differential if:
+
+`L(au) = a f(x)`
+
+
+`L(u)= ∂²u/∂x² = ∂²u/∂y²`
+`(m) = 0`
+`Ux + YUy = 0`
+: Transport equation.
+
+
+`2n = f(x)`
+`Ax = b`
+
+
+<!-- p006_c01 page 6 -->
+
+- **Homo**: Lu = 0, Ax = 0
+- **Non-Homo**: Qu = 0, Ax = b
+
+
+- U = Ug + Us
+- X = Xg + Xs
+
+
+- **Ug** is a general solution of Lu = 0.
+- **Us** is a special solution of Ax = b.
+- **Xy** is a generax=o solution ( unclear, possibly typo).
+- **Xs** is a special solution of Ax = b.
+
+
+Let U, U , ... Un be solutions of Lu = 0. Then:
+
+u() = (U + U + ... + Un) is also a solution of Lu = 0.
+
+
+<!-- p007_c01 page 7 -->
+(a , . An)
+
+- clerest obel
+x()
+= f(t)
+x(t)
+=( f(t)d+
++ C
+u()
+= 0
+,
+x() = G
+u"(+) =0
+,
+
+Table: (none)
+
+- 2(f)
+=
+C , + + Cr
+
+=0
+.
+(x
+, y) = 0
+* (ux) =0.
+ux
+= F(y)
+(x
+, y)
+= F(Y)
+u(x , y)
+= X F(y)
++ G())
+
+
+<!-- p008_c01 page 8 -->
+
+
+- UxX + U = 0
+- u"+ u = 0
+
+
+Table: Coefficients C1 and C2
+
+| Term | Coefficient |
+| --- | --- |
+| cosxX | C1(y) |
+| sinxX | C2(y) |
+
+u(x, y) = C1(y)cosxX + C2(y)sinxX
+
+
+- u(X, y) = 0
+
+
+
+- Uxy = 0
+- uxx(x) = 0
+- ux = F(X)
+
+
+u = ∫[F(X)]dx + H(x) + G(y)
+
+
+<!-- p009_c01 page 9 -->
+
+
+
+Table: 
+| Formula | Description |
+| --- | --- |
+| ∂+ ) = f(x)2) | (later) · 1 |
+
+- I(t) = (bH): f(x,+)dX · b
+alt)
+I'(t) = f(b(t), +). b'(t) - f(a(t),+)a(t)
+
+
+<!-- p010_c01 page 10 -->
+F = (F1, ..., Fm)
+
+
+u(X, Y) = ∂U/∂x * u + ∂U/∂y * v as the directional derivative in direction.
+ 
+
+
+<!-- p011_c01 page 11 -->
+L = bx - ay = c
+Hx = F' - b
+My = F + a
+aUx + buy = aFb + b · F(a) = 0
+
+- x = ax + by
+- y = bx - ay
+
+
+<!-- p012_c01 page 12 -->
+{}
+ 
+ux = Hy
+- a
++ Hyb
+=
+allx
++ buy
+My = uyb
++
+Hy ( - a) = buy
+- any
+0 =
+alx
++ buy = (a
++
++b)Ux
+=
+Hx)
+= 0
+x =
+F(y)
+=
+F(bx - ay)
+
+Ux +yuy
+= 0
+
+It is linear
+2 =
++ y52u
+= 0 .
+
+(
+,y)
+. (Ux
+, uy) = 0
+
+s
+I -
+(1 , %)
+-
+-
+-
+y = +
+y = ceY
+
+
+<!-- p013_c01 page 13 -->
+
+- *(u(x, E_x + x) = 0)*
+- *u(x, y + c) = U_{10}(2y - E_x)*
+- *F(x) = F(y - E_x)*
+- *F(bx - ay)*
+
+
+<!-- p014_c01 page 14 -->
+
+- allx + buy = 0
+- a+b"70 
+- if we consider the equation:
+  y = Hx + My
+  y = ux + My = 0
+  u(x, x + c) = u(0, c)
+  u(X ,y) = u(0 , C)
+  = U(0 , y -tax)
+  = F(y - Ex)
+  = G(ay - bx)
+  = H(bx- ay)
+
+
+<!-- p015_c01 page 15 -->
+2.
+
+ux + y Hy = 0.
+
+y' = - 
+= Y
+y =
+ce"
+=
+c
+=ye
+(x, ce)
+=
+Ux + Hy(e"
+= ux
++yuy
+=0.
+u(X, (e) = u(0 , C)
+= u(0, ye)
+= F(ye
+Y)
+
+In the previous example,
+if 
+in addition ,
+210 , y) =
+3.
+
+Then what is the solution ?
+
+u(x ,y) = F(ye
+y= u(0
+.y)
+=
+F(y)
+
+
+<!-- p016_c01 page 16 -->
+u(x,y) = (ye-x)^3
+
+(e^(y)) = e^(-(y'-y)) = 0 .
+
+f(y) = X + C
+fen
+X + C
+1y1
+=
+e
+y
+=
+=
+e
+* + 6
+= - e^(-ex)
+
+Y = 0 .
+= y
+=
+c , e^X
+
+
+<!-- p017_c01 page 17 -->
+Ux + 2xUy = 0.
+
+y =
+xy = zxyz
+x = zxy^2
+=
+2xdx (Missing: y = 0)
+
+- T = x + c
+y = -CER
+One more
+y = 0
+U(X . - )
+=
+caust
+=>
+u(0, -5)
+y =
+-
+x
++ c =
+- t
+=>
+c =
+-t
+-x
+u(x,y)
+=
+u(0,
+-j)
+=
+u(0,
+x)
+=
+x^10,
+y
+= F(y)
+
+
+<!-- p018_c01 page 18 -->
+1 + xy = 0.
+
+y = -
+
+The function u(X, y) is NOT defined on the curve y = -x.
+
+At s &,
+
+In general, if a(x, y)(x + b(x, y)/ky = 0.
+
+The ODE:
+y = Y(x)
+is implicitly defined by the equation U(X, y) = 0.
+u(x, y(x)) = 0
+y = -ux + vy = 0.
+
+This is equivalent to S Nx + y = 0.
+
+y = dis a(x-Y)
+
+
+<!-- p019_c01 page 19 -->
+
+- Solution: y' = y/x = yy = x + c. yx = 2C
+- Rewrite: y - y = C
+
+y = x*
+
+
+y = -y = -1
+
+y = In U(x) = ulo, It) = e
+
+
+<!-- p020_c01 page 20 -->
+- Wave equations
+  ①
+- Heat equations (parabolic)
+  Eg.1
+- Laplace equations (elliptic)
+  Eg.2
+
+
+<!-- p021_c01 page 21 -->
+
+
+Assume $U = xe^{It} , X)$, $U_t = U_{xx}$,
+- $<X (@$ + > 0 .
+
+**Theorem**
+
+The general solutions of $U(X , t)$ are
+$u(X , t) = f(X + v(t)) + g(x - v(t))$,
+where $f$ and $g$ are arbitrary functions.
+
+**Proof:**
+$U_t = U_x \cdot v'(t) = 0$
+- $H^+ + cU_x = V$
+-
+$(2v'(t))^2 + (u_{xx}) = U_{tt} + 24x$
+= $(u_{xt} + u_{tx}) + ((x)^2)$
+= $U_{xx} + 24xx$
+If
+$V = n^+ \# (U_x E V^+$,
+- $CV_x = 0$
+-->
+$v(x,t) = h(x - 2t)$
+
+
+<!-- p022_c01 page 22 -->
+- H+ + (Ux = 0
+u = g(X - (t)
+
+Assume u(x, t) = f(x + ct)
+- Ht = cf'(X + c + )
+ux = f'(x)
+u+ + (ux = x f(x+ xt)
+= h(x+ ct)
+f(x) = ∫[h(x)dx
+U = g(x - f) + f(x+ (t)x
+
+Alternatively, we can solve the equation by changing of variables.
+We let:
+- 3 = x + xt
+- y = x - c
+
+Ut = M(y) + H(y)(Ug-Un)
+= My c + Hy(-
+
+
+<!-- p023_c01 page 23 -->
+{} 
+
+
+- Ug = Use + Us = cluss-Usu 
+- Un = Ug + Ung = c(Ugy - Unn) 
+- UH = 2(Ues + Ung) - 2cUgy 
+- Ux = 4 + Yy 
+- uxx = Ugg + Uny + 213 
+- 0 = uH - inx = -45Ugy => KeyO 
+. 
+
+
+= fixtc + gla
+UH-cUxx = 0 -<XA 
+? 
+
+uf(x , 0) = 4 (X
+
+u(x , +) = f(x + (t)) + g(X - c)
+
+& (x) = u(x ,0) = f(x) + f(x)
+
+= c f'(x + (t)) - cg(x - (t))
+
+
+<!-- p024_c01 page 24 -->
+4(x) = (+ (x + 0) = c f(x) - 38'(x)
+
+[(y()dx = f(x) - g(x)
+f + y = 4
+f
+-g = + (4(x)dx
+
+f = &(k + t(y(x)dx)
+g = (d - t(4(x)dx)
+
+Rewrite f(x) = za(x) + So
+"4151ds
+g(x) = 1P(x) - E.
+"415ds
+
+u(x+) = f(x + (H) + g(X - (t))
+
+((d(x + (t)) + q(X - Ct)) + et()
+
+***
+
+
+y1sIds = ((d(x + (t)) + q(X - Ct)) + y(s)ds
+
+**D'Alembert's Formula**
+
+Note: I've kept the original formatting and structure cues, including the use of Markdown headers and emphasis.
+
+
+<!-- p025_c01 page 25 -->
+
+
+- UH-Uxx = 0
+- x(x, 0) = 4(X)
+- (+ (x , 0) = Y(X)
+
+u(x ,+) = z(f(x+ 2) + q(x - c +)) * +Ct + (x-c 4(s)ds
+
+
+<!-- p026_c01 page 26 -->
+&\left( x \right) = 0
+.
+↑\left( x \right) =
+cosX .
+Then
+u(X,+) =
+24\left( 8 \right)ds
+= c cos t
+=
+i
+\int_{ - \infty }^{\infty} \left[ \sin \left( x + \left( f \right) \right) - \sin \left( x - \left( + \right) \right) \right] dx
+= \frac{1}{Sin}
+os
++ cos X Sict
+- sin cos +
+cos X Sicts
+=
+-
+cosx Sin +
+4\left( x \right) = 0 b -
+Nk
+ko\left( x \right)
+= 1
+g
+\left( x179
+u\left( x, + \right)
+= E\left[ d\left( x + \left( t \right) + q\left( x - c + \right) \right) \right]
+
+
+<!-- p027_c01 page 27 -->
+,
+picture P(X)
+*
+3
+/Ex
+11) .
+
+the general solution of
+3 UH + 10(x+ + 3(xx= Sin(x+ +
+)
+
+The linear operator
+2 3 + 3
+So
+the equation
+can be written as
+2u
+= sm(X+ + )
+.
+
+a special
+solution
+, we
+assume
+x(x,+)
+= ( , Sm(x+ +
+)
++G
++ +
+)
+
+
+<!-- p028_c01 page 28 -->
+- 2 3 ++ 3
+I =
+-
+= Is +)(
++ 3
+·
+)
+Let v = 
+(3
++ 2)u
+= 0
+30+
++ Ux
+= 0
+.
+v = f(3x - t)
++ + 34y
+= v
+= f (3x - +)
+u =
+g(3t - x)
++
+H(3x - +)
+
+
+<!-- p029_c01 page 29 -->
+TUxx = 0
+
+f, T
+o
+
+c = E
+
+Emr > KE = Study = Udy
+= If UEdx
+= (fui)dx
+= p(u+ u+ dx)
+=
+u+ uxx dx
+= +ju
++ dux
+= TT
+ux
+=
+- T(UxUx + dX
+
+
+<!-- p030_c01 page 30 -->
+= (i) dx
+=
+- (i)uydx
+Potential energy: 
+Then (IE + PE)
+= o
+Define the
+mechanical energy
+to be
+ITE + PE
+Then
+we have
+the
+-Mechanical
+energy conservation
+a
+fUH
+- TUxx = 0
+&
+u(o) =
+q(x) = b
+&
+U+ (x, 0) = 0
+E = ∫(2)(yup + TUx)dx
+
+
+<!-- p031_c01 page 31 -->
+- T(ux) = o
+- I + (d(x)/dx)b = <Xa>4(x) = 2b + t - as XO12 aOocXC P(x) = L - a < X0 IXI) aO2b2(kdx = 2 -
+- u(x+) = (d(X+ (t)) + ((x - c+))
+- E(f) = KE + PE
+- I (i+ux]dx
+
+
+<!-- p032_c01 page 32 -->
+= z(k'(x + c+) - k'(x - (t)).
+
+= ((k'(x + c+) - q'(x - c+))dX.
+
+= ((d'(x + c+) + q'(x+c))dx).
+
+= (((d'(x +c+)) + (4'(x - cy))dx) = ((k'(x +CH)a - > c) ((x -())dX) & 1 '(x+ c+) dxH(, &'(y) dy = (i) dx.
+
+= 2c(d( dy - A).
+
+
+<!-- p033_c01 page 33 -->
+
+is a function on the rectangular domain [0,e] x To.
+
+**Maximum Principle**
+
+Theorem: The maximum value of u (x,t) can only be reached on lines where:
+
+- (x,t) / ∂t = 0, for 0 ≤ x ≤ e
+- (x,t) = 0, at the boundary x = 0 or x = e
+
+**Strong Maximum Principle**
+
+Theorem: The maximum value of u(x,t) is attained inside the domain.
+
+**Weak Maximum Principle**
+
+Theorem: max U(x,t) = max U(x,0).
+
+
+<!-- p034_c01 page 34 -->
+
+- **Uxx** and **UH**: incompositive definite -
+- Which is equivalent to ⑭so, UH 0 at (Xo . Yo) ⑥.
+- **Uxx**UH - U70. u+ = kkxx 0 = H+ 10, yo) = R(xx(X0 ,%)
+
+
+- u(X+) + 2x2
+↳ u+= Rux = RVxx - 2kE
+Vxx = Uxx + 25
+
+
+<!-- p035_c01 page 35 -->
+(Xo . Yo) ERR is an interior point such that I reaches maximum.
+Then 
+Ut (X0, %. ) = 0
+Uxx (o , %o) = 10 ·
+Contradiction: 0 =
+V+ 10%) = RVxx-2k25-26s0 .
+Max Vixit) = max Next
+
+Let (X0 , i) be the maximum point of vi.
+Hence, Eu-ut = 20 .
+v(x,+)
+= u(X,+ ) +2
+L
+U (x .+)
+=
+v (X , +)
+- EX
+=>
+Max u(x, +) < Max U(x.+)
+R
+R
+= Max v(x. t)
+Max VIX,t) - Max Ut +
+3
+
+
+<!-- p036_c01 page 36 -->
+
+
+Let 2 + 0. = Max Uf Max UIx
+
+
+
+Consider Ut = RUxx ? u(x,0) = f(x)
+u(0 .+) = g(t),
+u (l .+)= h(t)
+
+Then the solution is unique.
+proof
+:
+Let U1 and U2 be the two solutions.
+Let 2 (Xit) = U1 (X.+ ) - U2 (X,+)
+-
+x+ = kUxx ? u(X,0) =
+0
+u(0 , H) = 0,
+u(l,+) =0
+
+Max U = Max u =
+
+Moreover,
+- 1 also solves the above equation
+Max(u) -
+0.
+=
+U = O R
+
+
+<!-- p037_c01 page 37 -->
+- cUxx = 0 (wave equation)
+- Initial conditions:
+  - u(X, 0) = 0
+  - U+(X,0) = 0
+- Energy functional E(f):
+  Table: Energy Functional Components
+  | Component | Description |
+  | --- | --- |
+  | ESU | Kinetic energy term |
+  | iUxo | Potential energy term |
+  | o | Constant factor |
+- Energy at t=0:
+  - E(0) = 0
+- Time derivative of energy:
+  - Ut = 0
+- Spatial derivatives:
+  - UXEo 
+- Energy conservation:
+  - EU(X,+) = const

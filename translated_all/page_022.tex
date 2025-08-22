@@ -1,0 +1,80 @@
+```latex
+\section*{Wave Equation Solutions}
+
+\subsection*{General Solution of the Homogeneous Equation}
+
+Find the general solution of the homogeneous equation, which is given by:
+
+\begin{equation}
+    u_{tt} + c^2 u_{xx} = 0
+\end{equation}
+
+The solution can be expressed as:
+
+\begin{equation}
+    u = g(x - ct)
+\end{equation}
+
+\subsection*{Particular Solution}
+
+Find a particular solution by assuming:
+
+\begin{equation}
+    u = f(x + ct)
+\end{equation}
+
+Then, we have:
+
+\begin{align}
+    u_t &= c f'(x + ct) \\
+    u_x &= f'(x + ct)
+\end{align}
+
+Substituting into the wave equation:
+
+\begin{equation}
+    u_{tt} + c^2 u_{xx} = c^2 f''(x + ct) = h(x + ct)
+\end{equation}
+
+Thus, we find:
+
+\begin{equation}
+    f(x) = \int h(x) \, dx
+\end{equation}
+
+The general solution of the wave equation is:
+
+\begin{equation}
+    u = g(x - ct) + f(x + ct)
+\end{equation}
+
+\subsection*{Alternative Method: Change of Variables}
+
+Alternatively, we can solve the equation by changing variables. Let:
+
+\begin{align}
+    \xi &= x + ct \\
+    \eta &= x - ct
+\end{align}
+
+Then, the derivatives transform as follows:
+
+\begin{align}
+    u_t &= c u_\xi - c u_\eta \\
+    u_x &= u_\xi + u_\eta
+\end{align}
+
+This transformation simplifies the wave equation to:
+
+\begin{equation}
+    u_{\xi \eta} = 0
+\end{equation}
+
+The solution in terms of the new variables is:
+
+\begin{equation}
+    u(\xi, \eta) = F(\xi) + G(\eta)
+\end{equation}
+
+where \( F \) and \( G \) are arbitrary functions determined by initial conditions.
+```
