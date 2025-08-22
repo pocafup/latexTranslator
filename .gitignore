@@ -1,2 +1,8 @@
 pyproject.toml
 .env
+translated_all/
+*.pdf
+.env.example
+poetry.lock
+texput.log
+translated.txt
