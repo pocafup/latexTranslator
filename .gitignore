@@ -1,9 +1,11 @@
 pyproject.toml
 .env
 translated_all/
+translated_output/
 *.pdf
 .env.example
 poetry.lock
 texput.log
 translated.txt
 __pycache__/
+translated.md
