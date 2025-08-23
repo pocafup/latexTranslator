@@ -6,3 +6,4 @@ translated_all/
 poetry.lock
 texput.log
 translated.txt
+__pycache__/

@@ -1,0 +1,30 @@
+```latex
+\section*{List of Calculus Facts}
+
+\begin{enumerate}
+    \item Partial derivatives are local.
+    
+    \item $U_{xy} = K_{yx}$
+    
+    \item Chain rules:
+    \begin{align*}
+        f(g(x, y)) &= f'(g(x, y)) \cdot g'(x, y) \\
+        &= f'(g(x, y)) \cdot \frac{\partial g}{\partial x} \quad \text{(special case of chain rule)}
+    \end{align*}
+    Assume $f = f(y_1, y_2, \ldots, y_n)$ and $y_i = g_i(x_1, \ldots, x_k)$ in the most general form of the chain rule.
+    
+    \item Green's formula (later):
+    \[
+    \int \left( \frac{\partial f}{\partial x} + \frac{\partial f}{\partial y} \right) \, dx \, dy = \oint f \, dt
+    \]
+    
+    \item For a function $I(t)$:
+    \[
+    I(t) = \int_{a(t)}^{b(t)} f(x, t) \, dx
+    \]
+    The derivative is given by:
+    \[
+    I'(t) = f(b(t), t) \cdot b'(t) - f(a(t), t) \cdot a'(t) + \int_{a(t)}^{b(t)} \frac{\partial f}{\partial t} \, dx
+    \]
+\end{enumerate}
+```
