@@ -4,13 +4,17 @@ FROM python:3.11-slim AS base
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libjpeg62-turbo zlib1g curl \
+    texlive-xetex \
+    texlive-latex-base texlive-latex-recommended texlive-latex-extra \
+    texlive-fonts-recommended lmodern latexmk \
+    fonts-dejavu fonts-freefont-ttf ca-certificates curl \
  && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --upgrade pip && pip install "poetry==${POETRY_VERSION}"
+RUN pip install --upgrade pip && pip install "poetry==2.1.2"
 
 COPY pyproject.toml poetry.lock* ./
-RUN poetry install
+
+RUN poetry install --no-interaction --no-ansi --no-root
 
 COPY . .
 
