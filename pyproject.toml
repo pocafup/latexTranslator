@@ -1,0 +1,24 @@
+[project]
+name = "latextranslator"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "pocafup",email = "pocafup@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "pymupdf (==1.24.9)",
+    "python-dotenv (==1.0.1)",
+    "tqdm (==4.66.4)",
+    "requests (==2.32.3)",
+    "streamlit (==1.37.1)",
+    "watchdog (==4.0.1)"
+]
+
+[tool.poetry.dependencies]
+python = ">=3.9, !=3.9.7"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
