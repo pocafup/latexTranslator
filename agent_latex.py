@@ -37,7 +37,7 @@ from tqdm import tqdm
 load_dotenv()
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5")
 
 # --- PDF extraction ---
 try:
@@ -50,6 +50,9 @@ except Exception as e:
 SYSTEM_LATEX = """You are a LaTeX writer. Convert the given math lecture page into clean, compilable LaTeX.
 - Do NOT include any handwritten artifacts or images of text.
 - Preserve all math, symbols, and equations precisely.
+- Italicize the text with color other than black when generating
+- Do NOT omit anything. Perform a line break and place the context that you are not sure where to put
+- Keep the images in the original pdf by wrapping text around it. Place it in the relative place 
 - Do NOT add the ```latex or the ``` as the pdf generator cannot recognize it.
 - Preserve section headers and structure using \\section*, \\subsection* as appropriate.
 - If the page contains a simple analytic geometry sketch (axes, lines, vectors),
@@ -192,7 +195,7 @@ def make_master_epilogue() -> str:
 """
 
 
-def compile_pdf(tex_path: str, engine: str = "pdflatex") -> None:
+def compile_pdf(tex_path: str, engine: str = "xelatex") -> None:
     """Run LaTeX engine twice for references. Falls back to xelatex if pdflatex not found."""
     tex_dir = os.path.dirname(os.path.abspath(tex_path)) or "."
     fname = os.path.basename(tex_path)
@@ -270,7 +273,7 @@ def run(
     if compile_flag:
         print("Compiling PDF...")
         try:
-            compile_pdf(master_path, engine="pdflatex")
+            compile_pdf(master_path, engine="xelatex")
             print("PDF compiled successfully.")
         except subprocess.CalledProcessError as e:
             print("LaTeX compile failed. See output above.", file=sys.stderr)

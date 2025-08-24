@@ -31,28 +31,17 @@ with st.expander("Engine & Model Settings", expanded=True):
         help="OpenAI: api.openai.com; Ollama: http://localhost:11434; Custom: your own gateway.",
     )
     colA, colB = st.columns(2)
+    
+    urlMap = {"OpenAI (cloud)": "https://api.openai.com/v1", "Ollama (local)": "http://localhost:11434", "Custom": "Enter Your LLM Domain"}
+    modelMap = {"OpenAI (cloud)": "gpt-5", "Ollama (local)": "llama3.1:8b", "Custom": "Enter Your Model Name"}
+    apikeyMap = {"OpenAI (cloud)": "sk-...", "Ollama (local)": "ollama", "Custom": None}
     with colA:
-        if engine_choice == "OpenAI (cloud)":
-            base_url = st.text_input("Base URL", value="https://api.openai.com/v1")
-            model = st.text_input("Model", value="gpt-4o")
-            api_key = st.text_input("API Key", type="password", placeholder="sk-...")
-        elif engine_choice == "Ollama (local)":
-            base_url = st.text_input("Base URL", value="http://localhost:11434")
-            model = st.text_input("Model", value="llama3.1:8b")
-            # Any non-empty string works as 'key' for Ollama
-            api_key = st.text_input("API Key", value="ollama", type="password")
-        else:
-            base_url = st.text_input("Base URL", value="https://api.openai.com/v1")
-            model = st.text_input("Model", value="gpt-4o")
-            api_key = st.text_input(
-                "API Key", type="password", placeholder="your secret/token"
-            )
-
+        base_url = st.text_input("Base URL", value=urlMap[engine_choice])
+        model = st.text_input("Model", value=modelMap[engine_choice])
+        
     with colB:
         title = st.text_input("Document Title", value="Translated Document")
-        latex_engine = st.selectbox(
-            "LaTeX engine (used if compile is ON)", ["pdflatex", "xelatex"], index=0
-        )
+        api_key = st.text_input("API Key", type="password", placeholder=apikeyMap[engine_choice])
 
 with st.expander("PDF & Translation Settings", expanded=True):
     uploaded = st.file_uploader("Upload PDF", type=["pdf"])
@@ -124,7 +113,7 @@ if run_btn:
                     st.write(f"**Model:** `{model}`  •  **Base URL:** `{base_url}`")
                     st.write(f"**Output folder:** `{out_dir}`")
                     st.write(
-                        f"**Pages:** `{pages}`  •  **Compile:** `{compile_pdf}`  •  **LaTeX engine:** `{latex_engine}`"
+                        f"**Pages:** `{pages}`  •  **Compile:** `{compile_pdf}``"
                     )
 
                     # Monkey-patch: force engine choice by briefly patching function if you want.
