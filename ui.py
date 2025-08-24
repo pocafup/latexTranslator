@@ -11,7 +11,9 @@ import streamlit as st
 # (assumes agent_latex.py is in the same directory)
 from agent_latex import run as agent_run
 
-st.set_page_config(page_title="PDF → LaTeX Translator", page_icon="📄", layout="centered")
+st.set_page_config(
+    page_title="PDF → LaTeX Translator", page_icon="📄", layout="centered"
+)
 
 st.title("📄 PDF → LaTeX (with TikZ) Translator")
 
@@ -26,7 +28,7 @@ with st.expander("Engine & Model Settings", expanded=True):
         "Model backend",
         ["OpenAI (cloud)", "Ollama (local)", "Custom"],
         index=0,
-        help="OpenAI: api.openai.com; Ollama: http://localhost:11434; Custom: your own gateway."
+        help="OpenAI: api.openai.com; Ollama: http://localhost:11434; Custom: your own gateway.",
     )
     colA, colB = st.columns(2)
     with colA:
@@ -42,23 +44,30 @@ with st.expander("Engine & Model Settings", expanded=True):
         else:
             base_url = st.text_input("Base URL", value="https://api.openai.com/v1")
             model = st.text_input("Model", value="gpt-4o")
-            api_key = st.text_input("API Key", type="password", placeholder="your secret/token")
+            api_key = st.text_input(
+                "API Key", type="password", placeholder="your secret/token"
+            )
 
     with colB:
         title = st.text_input("Document Title", value="Translated Document")
-        latex_engine = st.selectbox("LaTeX engine (used if compile is ON)", ["pdflatex", "xelatex"], index=0)
+        latex_engine = st.selectbox(
+            "LaTeX engine (used if compile is ON)", ["pdflatex", "xelatex"], index=0
+        )
 
 with st.expander("PDF & Translation Settings", expanded=True):
     uploaded = st.file_uploader("Upload PDF", type=["pdf"])
     pages = st.text_input("Pages (e.g., 1,3,5-9, or 1-999 for all)", value="1-999")
     out_dir_name = st.text_input("Output folder name", value="translated_output")
     compile_pdf = st.checkbox("Compile to PDF", value=True)
-    st.caption("Tip: If you don't have MiKTeX/TeX Live installed, uncheck 'Compile to PDF' and you'll still get master.tex.")
 
-run_btn = st.button("Generate", type="primary", use_container_width=True, disabled=(uploaded is None))
+run_btn = st.button(
+    "Generate", type="primary", use_container_width=True, disabled=(uploaded is None)
+)
+
 
 def set_env_temporarily(vars_dict):
     """Context manager to set env vars for the duration of a block."""
+
     class _Ctx:
         def __enter__(self_nonlocal):
             self_nonlocal.old = {}
@@ -68,13 +77,16 @@ def set_env_temporarily(vars_dict):
                     os.environ.pop(k, None)
                 else:
                     os.environ[k] = v
+
         def __exit__(self_nonlocal, exc_type, exc, tb):
             for k, oldv in self_nonlocal.old.items():
                 if oldv is None:
                     os.environ.pop(k, None)
                 else:
                     os.environ[k] = oldv
+
     return _Ctx()
+
 
 if run_btn:
     if uploaded is None:
@@ -101,15 +113,19 @@ if run_btn:
             env_vars = {
                 "OPENAI_BASE_URL": base_url.strip(),
                 "OPENAI_API_KEY": api_key.strip() or "",
-                "OPENAI_MODEL": model.strip()
+                "OPENAI_MODEL": model.strip(),
             }
 
             # Run the pipeline
             with set_env_temporarily(env_vars):
-                with st.status("Processing… This can take a while for large PDFs.", state="running") as status:
+                with st.status(
+                    "Processing… This can take a while for large PDFs.", state="running"
+                ) as status:
                     st.write(f"**Model:** `{model}`  •  **Base URL:** `{base_url}`")
                     st.write(f"**Output folder:** `{out_dir}`")
-                    st.write(f"**Pages:** `{pages}`  •  **Compile:** `{compile_pdf}`  •  **LaTeX engine:** `{latex_engine}`")
+                    st.write(
+                        f"**Pages:** `{pages}`  •  **Compile:** `{compile_pdf}`  •  **LaTeX engine:** `{latex_engine}`"
+                    )
 
                     # Monkey-patch: force engine choice by briefly patching function if you want.
                     # Simpler: leave agent_latex's compile default (pdflatex fallback xelatex).
@@ -117,7 +133,14 @@ if run_btn:
 
                     # Call the agent pipeline
                     start = time.time()
-                    agent_run(str(pdf_path), pages, str(out_dir), compile_pdf, title)
+                    agent_run(
+                        str(pdf_path),
+                        pages,
+                        str(out_dir),
+                        compile_pdf,
+                        title,
+                        api_key.strip(),
+                    )
                     elapsed = time.time() - start
 
                     status.update(label="Done!", state="complete")
@@ -134,7 +157,7 @@ if run_btn:
                     "Download master.tex",
                     data=master_tex.read_bytes(),
                     file_name="master.tex",
-                    mime="text/x-tex"
+                    mime="text/x-tex",
                 )
             else:
                 st.warning("master.tex not found (unexpected).")
@@ -144,10 +167,12 @@ if run_btn:
                     "Download master.pdf",
                     data=master_pdf.read_bytes(),
                     file_name="master.pdf",
-                    mime="application/pdf"
+                    mime="application/pdf",
                 )
             elif compile_pdf:
-                st.warning("Compilation was requested, but master.pdf was not produced. Check LaTeX installation (MiKTeX/TeX Live).")
+                st.warning(
+                    "Compilation was requested, but master.pdf was not produced. Check LaTeX installation (MiKTeX/TeX Live)."
+                )
 
             # Show list of per-page LaTeX files
             if page_files:
@@ -159,10 +184,11 @@ if run_btn:
                             data=fh.read(),
                             file_name=p.name,
                             mime="text/x-tex",
-                            key=str(p)
+                            key=str(p),
                         )
 
     except Exception as e:
         st.error("An error occurred.")
         st.exception(e)
         st.text(traceback.format_exc())
+
