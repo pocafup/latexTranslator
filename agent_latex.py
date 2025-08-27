@@ -1,3 +1,12 @@
+#save: 
+
+# # Latin
+# brew install --cask font-noto-serif font-noto-sans font-noto-sans-mono
+
+# # CJK (pick Serif or Sans; you can install both)
+# brew install --cask font-noto-serif-cjk-sc font-noto-serif-cjk-jp font-noto-serif-cjk-kr
+# brew install --cask font-noto-sans-cjk-sc   font-noto-sans-cjk-jp   font-noto-sans-cjk-kr
+
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
@@ -49,9 +58,6 @@ except Exception as e:
 # --- Prompts ---
 SYSTEM_LATEX = """You are a LaTeX writer. Convert the given math lecture page into clean, compilable LaTeX.
 - Do NOT include any handwritten artifacts or images of text.
-- Preserve all math, symbols, and equations precisely.
-- Italicize the text with color other than black when generating
-- Do NOT omit anything. Perform a line break and place the context that you are not sure where to put
 - Keep the images in the original pdf by wrapping text around it. Place it in the relative place 
 - Do NOT add the ```latex or the ``` as the pdf generator cannot recognize it.
 - Preserve section headers and structure using \\section*, \\subsection* as appropriate.
@@ -96,13 +102,25 @@ def llm_chat(system_msg: str, user_msg: str, api_key: str) -> str:
         }
         body = {
             "model": OPENAI_MODEL,
-            "temperature": 0,
+            # "temperature": 0,
             "messages": [
                 {"role": "system", "content": system_msg},
                 {"role": "user", "content": user_msg},
             ],
         }
+        # print(system_msg,"\n", user_msg)
+        # print(url)
+        # print(headers)
+        # print(body)
         r = requests.post(url, headers=headers, json=body, timeout=180)
+
+        # debug message
+        if r.status_code != 200:
+            print("Status:", r.status_code)
+            try:
+                print("Error JSON:", r.json())
+            except Exception:
+                print("Error text:", r.text)
         r.raise_for_status()
         data = r.json()
         return data["choices"][0]["message"]["content"]
@@ -172,22 +190,55 @@ def extract_page_texts(pdf_path: str, pages: List[int]) -> List[Tuple[int, str]]
             out.append((p, txt.strip()))
     return out
 
+def latex_escape(text: str) -> str:
+    # Minimal escaping for common special chars in LaTeX titles
+    repl = {
+        "\\": r"\textbackslash{}",  # must do first
+        "&": r"\&",
+        "%": r"\%",
+        "$": r"\$",
+        "#": r"\#",
+        "_": r"\_",
+        "{": r"\{",
+        "}": r"\}",
+        "~": r"\textasciitilde{}",
+        "^": r"\textasciicircum{}",
+    }
+    for k, v in repl.items():
+        text = text.replace(k, v)
+    return text
 
 def make_master_preamble(title: str = "Translated Document") -> str:
+    t = latex_escape(title)
     return r"""\documentclass[11pt]{article}
 \usepackage[margin=1in]{geometry}
-\usepackage[T1]{fontenc}
-\usepackage{lmodern}
+\usepackage{fontspec}   
+\usepackage{xeCJK}      
+\usepackage[english,spanish]{babel}
+\usepackage{newunicodechar}
+
+\newunicodechar{−}{\ensuremath{-}}
+\defaultfontfeatures{Ligatures=TeX}
+\setmainfont{Times New Roman}
+\setsansfont{Arial}
+\setmonofont{Courier New}
+
+\setCJKmainfont{Noto Serif CJK SC}
+\setCJKfamilyfont{jp}{Noto Serif CJK JP}
+\setCJKfamilyfont{kr}{Noto Serif CJK KR}
+
+\newcommand{\mydagger}{{\fontfamily{lmr}\selectfont\textdagger}}
+\newcommand{\myddag}{{\fontfamily{lmr}\selectfont\textdaggerdbl}}
 \usepackage{amsmath,amssymb,mathtools}
-\usepackage{tikz}
-\usepackage{hyperref}
 \setlength{\parskip}{0.6em}
 \setlength{\parindent}{0pt}
-\title{%s}
+
+\title{""" + t + r"""}
 \date{}
 \begin{document}
 \maketitle
-""" % (title,)
+"""
+
 
 
 def make_master_epilogue() -> str:
@@ -196,25 +247,26 @@ def make_master_epilogue() -> str:
 
 
 def compile_pdf(tex_path: str, engine: str = "xelatex") -> None:
-    """Run LaTeX engine twice for references. Falls back to xelatex if pdflatex not found."""
+    import subprocess, os
     tex_dir = os.path.dirname(os.path.abspath(tex_path)) or "."
     fname = os.path.basename(tex_path)
 
-    def run(cmd):
-        subprocess.run(
-            cmd,
+    def run_once():
+        proc = subprocess.run(
+            [engine, "-interaction=nonstopmode", fname],
             cwd=tex_dir,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            check=True,
+            text=True,
         )
+        # Always echo the output so you can see warnings/errors
+        print(proc.stdout)
+        if proc.returncode != 0:
+            # Re-raise with the captured log attached
+            raise subprocess.CalledProcessError(proc.returncode, proc.args, output=proc.stdout)
 
-    try:
-        run([engine, "-interaction=nonstopmode", fname])
-        run([engine, "-interaction=nonstopmode", fname])
-    except Exception as e:
-        raise
-
+    run_once()  # 1st pass
+    run_once()  # 2nd pass
 
 # --- Main pipeline ---
 def run(
@@ -224,8 +276,9 @@ def run(
     compile_flag: bool,
     title: str,
     api_key: str,
+    user_input: list[str],
 ):
-    # 1) Determine pages
+    # 1) Determine  pages
     doc = fitz.open(pdf_path)
     max_pages = len(doc)
     pages = parse_pages_arg(pages_arg, max_pages)
@@ -241,9 +294,22 @@ def run(
 
     # 3) Ask model for LaTeX body content per page
     parts = []
+
+    user_prompt = user_input[0]
+
+    cor_prompts = [
+        ". ",
+        "User input contains math formula. Translate those into latex. ",
+        f"IMPORTANT: Translate all the text into {user_input[2]} BEFORE GENERATING TEXT ",
+    ]
+    # Contains Math Equation
+    for i in range (len(user_input)):
+        if (user_input[i]!=""):
+            user_prompt += "- "+ cor_prompts[i] + "\n"
+    # print(user_prompt)
     for pno, txt in tqdm(page_texts, desc="Translating to LaTeX"):
         user_msg = USER_LATEX_TMPL.format(page_text=txt)
-        body = llm_chat(SYSTEM_LATEX, user_msg, api_key=api_key).strip()
+        body = llm_chat(SYSTEM_LATEX + user_prompt, user_msg, api_key=api_key).strip()
 
         # Save per-page body
         page_body_path = os.path.join(out_dir, f"page_{pno:03d}.tex")
@@ -276,7 +342,8 @@ def run(
             compile_pdf(master_path, engine="xelatex")
             print("PDF compiled successfully.")
         except subprocess.CalledProcessError as e:
-            print("LaTeX compile failed. See output above.", file=sys.stderr)
+            print("LaTeX compile failed.\n--- xelatex output ---\n")
+            print(e.output or "")
             sys.exit(3)
 
 

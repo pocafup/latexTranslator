@@ -43,6 +43,16 @@ with st.expander("Engine & Model Settings", expanded=True):
         title = st.text_input("Document Title", value="Translated Document")
         api_key = st.text_input("API Key", type="password", placeholder=apikeyMap[engine_choice])
 
+with st.expander("Customization Settings", expanded = True):
+    user_prompt = st.text_input("Project Prompt",placeholder='e.g. generate the pdf with green text color') 
+    math_equation = st.checkbox("Contains Math Equations",value = True)
+    language_translation = st.checkbox("Translate To Another Langauge",value=False)
+    language_selected = ""
+    if (language_translation):
+        languages = ["English","Chinese","Spanish","Japanese","Other"]
+        language_selected = st.selectbox("Language To Translate",languages)
+    user_input = [user_prompt,math_equation,language_selected ]
+
 with st.expander("PDF & Translation Settings", expanded=True):
     uploaded = st.file_uploader("Upload PDF", type=["pdf"])
     pages = st.text_input("Pages (e.g., 1,3,5-9, or 1-999 for all)", value="1-999")
@@ -113,7 +123,7 @@ if run_btn:
                     st.write(f"**Model:** `{model}`  •  **Base URL:** `{base_url}`")
                     st.write(f"**Output folder:** `{out_dir}`")
                     st.write(
-                        f"**Pages:** `{pages}`  •  **Compile:** `{compile_pdf}``"
+                        f"**Pages:** `{pages}`  •  **Compile:** ``{compile_pdf}``"
                     )
 
                     # Monkey-patch: force engine choice by briefly patching function if you want.
@@ -129,6 +139,7 @@ if run_btn:
                         compile_pdf,
                         title,
                         api_key.strip(),
+                        user_input,
                     )
                     elapsed = time.time() - start
 
