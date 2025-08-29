@@ -46,7 +46,7 @@ from tqdm import tqdm
 load_dotenv()
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
 
 # --- PDF extraction ---
 try:
@@ -58,8 +58,8 @@ except Exception as e:
 # --- Prompts ---
 SYSTEM_LATEX = """You are a LaTeX writer. Convert the given math lecture page into clean, compilable LaTeX.
 - Do NOT include any handwritten artifacts or images of text.
-- Keep the images in the original pdf by wrapping text around it. Place it in the relative place 
 - Do NOT add the ```latex or the ``` as the pdf generator cannot recognize it.
+- Have the footnote and a reference to it but do not use \cite
 - Preserve section headers and structure using \\section*, \\subsection* as appropriate.
 - If the page contains a simple analytic geometry sketch (axes, lines, vectors),
   RECREATE it with TikZ using vector graphics (no raster images).
@@ -79,9 +79,14 @@ Instructions:
 - Use \\section*{{...}} or \\subsection*{{...}} for headings you detect.
 - If appropriate, add a small TikZ sketch that matches the page's figure(s).
 - Ensure the output compiles in a standard article preamble.
-Target language: English.
+- Target language varies, English if not specified
 """
 
+cor = {"Chinese" : "Noto Serif CJK SC",
+        "Japanese": "Noto Serif CJK JP",
+        "Korean"  : "Noto Serif CJK KR",
+        "English" : "Arial",
+        "Spanish" : "Arial"}
 
 # --- LLM call ---
 def llm_chat(system_msg: str, user_msg: str, api_key: str) -> str:
@@ -208,7 +213,7 @@ def latex_escape(text: str) -> str:
         text = text.replace(k, v)
     return text
 
-def make_master_preamble(title: str = "Translated Document") -> str:
+def make_master_preamble(title: str = "Translated Document", language: str = "English") -> str:
     t = latex_escape(title)
     return r"""\documentclass[11pt]{article}
 \usepackage[margin=1in]{geometry}
@@ -216,20 +221,12 @@ def make_master_preamble(title: str = "Translated Document") -> str:
 \usepackage{xeCJK}      
 \usepackage[english,spanish]{babel}
 \usepackage{newunicodechar}
-
+\usepackage{amsmath,amssymb,mathtools}
 \newunicodechar{−}{\ensuremath{-}}
-\defaultfontfeatures{Ligatures=TeX}
+""" + f"\\setCJKmainfont{{{cor[language]}}}\n" + r"""\defaultfontfeatures{Ligatures=TeX}
 \setmainfont{Times New Roman}
 \setsansfont{Arial}
 \setmonofont{Courier New}
-
-\setCJKmainfont{Noto Serif CJK SC}
-\setCJKfamilyfont{jp}{Noto Serif CJK JP}
-\setCJKfamilyfont{kr}{Noto Serif CJK KR}
-
-\newcommand{\mydagger}{{\fontfamily{lmr}\selectfont\textdagger}}
-\newcommand{\myddag}{{\fontfamily{lmr}\selectfont\textdaggerdbl}}
-\usepackage{amsmath,amssymb,mathtools}
 \setlength{\parskip}{0.6em}
 \setlength{\parindent}{0pt}
 
@@ -296,11 +293,11 @@ def run(
     parts = []
 
     user_prompt = user_input[0]
-
     cor_prompts = [
         ". ",
         "User input contains math formula. Translate those into latex. ",
-        f"IMPORTANT: Translate all the text into {user_input[2]} BEFORE GENERATING TEXT ",
+        f"IMPORTANT: Translate all the text into {user_input[2]} BEFORE GENERATING TEXT \n \
+          - Make sure the generated text is compatible with {cor[user_input[2]]}",
     ]
     # Contains Math Equation
     for i in range (len(user_input)):
@@ -320,7 +317,7 @@ def run(
     # 4) Assemble master LaTeX
     master_path = os.path.join(out_dir, "master.tex")
     with open(master_path, "w", encoding="utf-8") as f:
-        f.write(make_master_preamble(title))
+        f.write(make_master_preamble(title,user_input[2]))
         for pno, body_path in parts:
             # f.write(f"% --- Page {pno} ---\n")
             # f.write("\\clearpage\n")
@@ -343,8 +340,8 @@ def run(
             print("PDF compiled successfully.")
         except subprocess.CalledProcessError as e:
             print("LaTeX compile failed.\n--- xelatex output ---\n")
-            print(e.output or "")
-            sys.exit(3)
+            # print(e.output or "")
+            # sys.exit(3)
 
 
 # --- CLI ---

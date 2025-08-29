@@ -33,7 +33,7 @@ with st.expander("Engine & Model Settings", expanded=True):
     colA, colB = st.columns(2)
     
     urlMap = {"OpenAI (cloud)": "https://api.openai.com/v1", "Ollama (local)": "http://localhost:11434", "Custom": "Enter Your LLM Domain"}
-    modelMap = {"OpenAI (cloud)": "gpt-5", "Ollama (local)": "llama3.1:8b", "Custom": "Enter Your Model Name"}
+    modelMap = {"OpenAI (cloud)": "gpt-4o", "Ollama (local)": "llama3.1:8b", "Custom": "Enter Your Model Name"}
     apikeyMap = {"OpenAI (cloud)": "sk-...", "Ollama (local)": "ollama", "Custom": None}
     with colA:
         base_url = st.text_input("Base URL", value=urlMap[engine_choice])
@@ -49,7 +49,7 @@ with st.expander("Customization Settings", expanded = True):
     language_translation = st.checkbox("Translate To Another Langauge",value=False)
     language_selected = ""
     if (language_translation):
-        languages = ["English","Chinese","Spanish","Japanese","Other"]
+        languages = ["English","Chinese","Spanish","Japanese","Korean","Other"]
         language_selected = st.selectbox("Language To Translate",languages)
     user_input = [user_prompt,math_equation,language_selected ]
 
