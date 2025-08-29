@@ -6,6 +6,7 @@ import tempfile
 import pathlib
 import traceback
 import streamlit as st
+import zipfile
 
 # Import the pipeline function from your agent
 # (assumes agent_latex.py is in the same directory)
@@ -96,6 +97,8 @@ if run_btn:
         st.error("Please provide an OpenAI API key.")
         st.stop()
 
+    os.system('rm -rf ./translated_output')
+
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = pathlib.Path(tmpdir)
@@ -149,8 +152,26 @@ if run_btn:
             # Offer downloads if present
             master_tex = out_dir / "master.tex"
             master_pdf = out_dir / "master.pdf"
+            master_zip = out_dir / "master.zip"
             page_files = sorted(out_dir.glob("page_*.tex"))
+            
 
+            with zipfile.ZipFile(master_zip, 'w', zipfile.ZIP_DEFLATED, False) as zipf: 
+                if master_tex.exists():
+                    zipf.write(master_tex,arcname=master_tex.name)
+                if compile_pdf and master_pdf.exists():
+                    zipf.write(master_pdf,arcname=master_pdf.name)
+                if page_files:
+                    for p in page_files:
+                        zipf.write(p,arcname=p.name)
+
+            with open(master_zip, "rb") as file:
+                st.download_button(
+                    "Download master.zip",
+                    data=file,
+                    file_name="master.zip",
+                    mime="application/zip"
+                )
             if master_tex.exists():
                 st.subheader("Downloads")
                 st.download_button(
@@ -173,19 +194,6 @@ if run_btn:
                 st.warning(
                     "Compilation was requested, but master.pdf was not produced. Check LaTeX installation (MiKTeX/TeX Live)."
                 )
-
-            # Show list of per-page LaTeX files
-            if page_files:
-                st.write("Per-page LaTeX outputs:")
-                for p in page_files:
-                    with open(p, "rb") as fh:
-                        st.download_button(
-                            f"Download {p.name}",
-                            data=fh.read(),
-                            file_name=p.name,
-                            mime="text/x-tex",
-                            key=str(p),
-                        )
 
     except Exception as e:
         st.error("An error occurred.")

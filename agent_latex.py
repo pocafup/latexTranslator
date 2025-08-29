@@ -82,11 +82,12 @@ Instructions:
 - Target language varies, English if not specified
 """
 
-cor = {"Chinese" : "Noto Serif CJK SC",
+cor = { "Chinese" : "Noto Serif CJK SC",
         "Japanese": "Noto Serif CJK JP",
         "Korean"  : "Noto Serif CJK KR",
         "English" : "Arial",
-        "Spanish" : "Arial"}
+        "Spanish" : "Arial",
+        "": ""}
 
 # --- LLM call ---
 def llm_chat(system_msg: str, user_msg: str, api_key: str) -> str:
