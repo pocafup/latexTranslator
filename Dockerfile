@@ -1,16 +1,19 @@
 # syntax=docker/dockerfile:1.6
 FROM python:3.11-slim AS base
 
-WORKDIR /app
+WORKDIR /latextranslator
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     texlive-xetex \
     texlive-latex-base texlive-latex-recommended texlive-latex-extra \
     texlive-fonts-recommended lmodern latexmk \
     fonts-dejavu fonts-freefont-ttf ca-certificates curl \
+    font-noto-serif-cjk-sc font-noto-serif-cjk-jp font-noto-serif-cjk-kr \ 
+    font-noto-sans-cjk-sc   font-noto-sans-cjk-jp   font-noto-sans-cjk-kr \
  && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --upgrade pip && pip install "poetry==2.1.2"
+RUN pip install --upgrade pip && pip install "poetry==2.1.2" \ 
+    zip_files
 
 COPY pyproject.toml poetry.lock* ./
 

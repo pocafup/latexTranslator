@@ -6,6 +6,7 @@ import tempfile
 import pathlib
 import traceback
 import streamlit as st
+import zipfile
 
 # Import the pipeline function from your agent
 # (assumes agent_latex.py is in the same directory)
@@ -33,7 +34,7 @@ with st.expander("Engine & Model Settings", expanded=True):
     colA, colB = st.columns(2)
     
     urlMap = {"OpenAI (cloud)": "https://api.openai.com/v1", "Ollama (local)": "http://localhost:11434", "Custom": "Enter Your LLM Domain"}
-    modelMap = {"OpenAI (cloud)": "gpt-5", "Ollama (local)": "llama3.1:8b", "Custom": "Enter Your Model Name"}
+    modelMap = {"OpenAI (cloud)": "gpt-4o", "Ollama (local)": "llama3.1:8b", "Custom": "Enter Your Model Name"}
     apikeyMap = {"OpenAI (cloud)": "sk-...", "Ollama (local)": "ollama", "Custom": None}
     with colA:
         base_url = st.text_input("Base URL", value=urlMap[engine_choice])
@@ -42,6 +43,16 @@ with st.expander("Engine & Model Settings", expanded=True):
     with colB:
         title = st.text_input("Document Title", value="Translated Document")
         api_key = st.text_input("API Key", type="password", placeholder=apikeyMap[engine_choice])
+
+with st.expander("Customization Settings", expanded = True):
+    user_prompt = st.text_input("Project Prompt",placeholder='e.g. generate the pdf with green text color') 
+    math_equation = st.checkbox("Contains Math Equations",value = True)
+    language_translation = st.checkbox("Translate To Another Langauge",value=False)
+    language_selected = ""
+    if (language_translation):
+        languages = ["English","Chinese","Spanish","Japanese","Korean","Other"]
+        language_selected = st.selectbox("Language To Translate",languages)
+    user_input = [user_prompt,math_equation,language_selected ]
 
 with st.expander("PDF & Translation Settings", expanded=True):
     uploaded = st.file_uploader("Upload PDF", type=["pdf"])
@@ -86,6 +97,8 @@ if run_btn:
         st.error("Please provide an OpenAI API key.")
         st.stop()
 
+    os.system('rm -rf ./translated_output')
+
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = pathlib.Path(tmpdir)
@@ -113,7 +126,7 @@ if run_btn:
                     st.write(f"**Model:** `{model}`  •  **Base URL:** `{base_url}`")
                     st.write(f"**Output folder:** `{out_dir}`")
                     st.write(
-                        f"**Pages:** `{pages}`  •  **Compile:** `{compile_pdf}``"
+                        f"**Pages:** `{pages}`  •  **Compile:** ``{compile_pdf}``"
                     )
 
                     # Monkey-patch: force engine choice by briefly patching function if you want.
@@ -129,6 +142,7 @@ if run_btn:
                         compile_pdf,
                         title,
                         api_key.strip(),
+                        user_input,
                     )
                     elapsed = time.time() - start
 
@@ -138,8 +152,26 @@ if run_btn:
             # Offer downloads if present
             master_tex = out_dir / "master.tex"
             master_pdf = out_dir / "master.pdf"
+            master_zip = out_dir / "master.zip"
             page_files = sorted(out_dir.glob("page_*.tex"))
+            
 
+            with zipfile.ZipFile(master_zip, 'w', zipfile.ZIP_DEFLATED, False) as zipf: 
+                if master_tex.exists():
+                    zipf.write(master_tex,arcname=master_tex.name)
+                if compile_pdf and master_pdf.exists():
+                    zipf.write(master_pdf,arcname=master_pdf.name)
+                if page_files:
+                    for p in page_files:
+                        zipf.write(p,arcname=p.name)
+
+            with open(master_zip, "rb") as file:
+                st.download_button(
+                    "Download master.zip",
+                    data=file,
+                    file_name="master.zip",
+                    mime="application/zip"
+                )
             if master_tex.exists():
                 st.subheader("Downloads")
                 st.download_button(
@@ -162,19 +194,6 @@ if run_btn:
                 st.warning(
                     "Compilation was requested, but master.pdf was not produced. Check LaTeX installation (MiKTeX/TeX Live)."
                 )
-
-            # Show list of per-page LaTeX files
-            if page_files:
-                st.write("Per-page LaTeX outputs:")
-                for p in page_files:
-                    with open(p, "rb") as fh:
-                        st.download_button(
-                            f"Download {p.name}",
-                            data=fh.read(),
-                            file_name=p.name,
-                            mime="text/x-tex",
-                            key=str(p),
-                        )
 
     except Exception as e:
         st.error("An error occurred.")
