@@ -12,8 +12,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     font-noto-sans-cjk-sc   font-noto-sans-cjk-jp   font-noto-sans-cjk-kr \
  && rm -rf /var/lib/apt/lists/*
 
+RUN tlmgr install pgf
+
 RUN pip install --upgrade pip && pip install "poetry==2.1.2" \ 
-    zip_files
+    zip_files openai
 
 COPY pyproject.toml poetry.lock* ./
 
