@@ -35,8 +35,12 @@ import os
 import re
 import sys
 import argparse
+import base64
 import subprocess
 import requests
+import pymupdf
+import tempfile
+from openai import OpenAI
 from typing import List, Tuple
 from dataclasses import dataclass
 from dotenv import load_dotenv
@@ -47,6 +51,8 @@ load_dotenv()
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
+
+__DEBUG__ = False
 
 # --- PDF extraction ---
 try:
@@ -68,11 +74,7 @@ SYSTEM_LATEX = """You are a LaTeX writer. Convert the given math lecture page in
 - IMPORTANT: Return ONLY the LaTeX BODY content (no \\documentclass or \\begin{document}).
 """
 
-USER_LATEX_TMPL = """Source page text (raw, may include noise):
---- BEGIN PAGE TEXT ---
-{page_text}
---- END PAGE TEXT ---
-
+USER_MSG = """Recognize and translate the pdf into a latex file
 Instructions:
 - Output ONLY LaTeX body content for this page.
 - Wrap displayed equations in equation/align as appropriate.
@@ -90,7 +92,7 @@ cor = { "Chinese" : "Noto Serif CJK SC",
         "": ""}
 
 # --- LLM call ---
-def llm_chat(system_msg: str, user_msg: str, api_key: str) -> str:
+def llm_chat(system_msg: str, user_msg:str, page: List[dict], api_key: str) -> str:
     """
     Dual-path client:
     - If OPENAI_BASE_URL ends with '/v1' or contains 'api.openai.com': use OpenAI Chat Completions.
@@ -101,36 +103,16 @@ def llm_chat(system_msg: str, user_msg: str, api_key: str) -> str:
     )
 
     if use_openai:
-        url = f"{OPENAI_BASE_URL}/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        }
-        body = {
-            "model": OPENAI_MODEL,
-            # "temperature": 0,
-            "messages": [
+        client = OpenAI(api_key=api_key)
+        completion = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
                 {"role": "system", "content": system_msg},
-                {"role": "user", "content": user_msg},
+                {"role": "user","content": page},
             ],
-        }
-        # print(system_msg,"\n", user_msg)
-        # print(url)
-        # print(headers)
-        # print(body)
-        r = requests.post(url, headers=headers, json=body, timeout=180)
-
-        # debug message
-        if r.status_code != 200:
-            print("Status:", r.status_code)
-            try:
-                print("Error JSON:", r.json())
-            except Exception:
-                print("Error text:", r.text)
-        r.raise_for_status()
-        data = r.json()
-        return data["choices"][0]["message"]["content"]
-
+        )
+        return completion.choices[0].message.content
+        
     else:
         # Ollama native chat
         url = f"{OPENAI_BASE_URL}/api/chat"
@@ -184,22 +166,23 @@ def parse_pages_arg(pages_arg: str, max_pages: int) -> List[int]:
                 continue
     return sorted(result)
 
-
-def extract_page_texts(pdf_path: str, pages: List[int]) -> List[Tuple[int, str]]:
-    doc = fitz.open(pdf_path)
+def extract_page(doc: fitz.Document, pages: List[int], max_width: int = 1600, jpg_quality: int = 80):
     out = []
-    for p in pages:
-        if 1 <= p <= len(doc):
-            page = doc[p - 1]
-            txt = page.get_text("text")
-            txt = "\n".join([ln.rstrip() for ln in txt.splitlines()])
-            out.append((p, txt.strip()))
+    for i in pages:
+        p = doc[i-1]
+        rect = p.rect
+        scale = min(max_width / float(rect.width or max_width), 4.0)
+        mat = fitz.Matrix(scale, scale)
+        pix = p.get_pixmap(matrix=mat, alpha=False)
+        jpg = pix.tobytes("jpg", jpg_quality=jpg_quality)
+        data_url = "data:image/jpeg;base64," + base64.b64encode(jpg).decode("ascii")
+        out.append((i, {"type": "image_url", "image_url": {"url": data_url}}))
     return out
 
 def latex_escape(text: str) -> str:
     # Minimal escaping for common special chars in LaTeX titles
     repl = {
-        "\\": r"\textbackslash{}",  # must do first
+        "\\": r"\textbackslash{}", 
         "&": r"\&",
         "%": r"\%",
         "$": r"\$",
@@ -220,13 +203,15 @@ def make_master_preamble(title: str = "Translated Document", language: str = "En
 \usepackage[margin=1in]{geometry}
 \usepackage{fontspec}   
 \usepackage{xeCJK}      
-\usepackage[english,spanish]{babel}
+\usepackage[english,spanish,es-noshorthands]{babel}
 \usepackage{newunicodechar}
 \usepackage{amsmath,amssymb,mathtools}
 \newunicodechar{−}{\ensuremath{-}}
+\usepackage{tikz}
 """ + f"\\setCJKmainfont{{{cor[language]}}}\n" + r"""\defaultfontfeatures{Ligatures=TeX}
 \setmainfont{Times New Roman}
 \setsansfont{Arial}
+\usetikzlibrary{arrows.meta}
 \setmonofont{Courier New}
 \setlength{\parskip}{0.6em}
 \setlength{\parindent}{0pt}
@@ -238,17 +223,14 @@ def make_master_preamble(title: str = "Translated Document", language: str = "En
 """
 
 
-
 def make_master_epilogue() -> str:
     return r"""\end{document}
 """
 
 
 def compile_pdf(tex_path: str, engine: str = "xelatex") -> None:
-    import subprocess, os
     tex_dir = os.path.dirname(os.path.abspath(tex_path)) or "."
     fname = os.path.basename(tex_path)
-
     def run_once():
         proc = subprocess.run(
             [engine, "-interaction=nonstopmode", fname],
@@ -257,10 +239,9 @@ def compile_pdf(tex_path: str, engine: str = "xelatex") -> None:
             stderr=subprocess.STDOUT,
             text=True,
         )
-        # Always echo the output so you can see warnings/errors
-        print(proc.stdout)
+        if __DEBUG__:
+            print(proc.stdout)
         if proc.returncode != 0:
-            # Re-raise with the captured log attached
             raise subprocess.CalledProcessError(proc.returncode, proc.args, output=proc.stdout)
 
     run_once()  # 1st pass
@@ -276,75 +257,78 @@ def run(
     api_key: str,
     user_input: list[str],
 ):
-    # 1) Determine  pages
     doc = fitz.open(pdf_path)
-    max_pages = len(doc)
-    pages = parse_pages_arg(pages_arg, max_pages)
-    if not pages:
-        print(f"No valid pages selected in range 1..{max_pages}.", file=sys.stderr)
-        sys.exit(2)
+    try:
+        max_pages = len(doc)
+        pages = parse_pages_arg(pages_arg, max_pages)
+        if not pages:
+            print(f"No valid pages selected in range 1..{max_pages}.", file=sys.stderr)
+            raise RuntimeError(f"No valid pages selected in range 1..{max_pages}.", file=sys.stderr)
 
-    out_dir = os.path.abspath(out_prefix)
-    os.makedirs(out_dir, exist_ok=True)
+        page_extracted = extract_page(doc, pages)
 
-    # 2) Extract text
-    page_texts = extract_page_texts(pdf_path, pages)
+        out_dir = os.path.abspath(out_prefix)
+        os.makedirs(out_dir, exist_ok=True)
 
-    # 3) Ask model for LaTeX body content per page
-    parts = []
+        parts_written = []
 
-    user_prompt = user_input[0]
-    cor_prompts = [
-        ". ",
-        "User input contains math formula. Translate those into latex. ",
-        f"IMPORTANT: Translate all the text into {user_input[2]} BEFORE GENERATING TEXT \n \
-          - Make sure the generated text is compatible with {cor[user_input[2]]}",
-    ]
-    # Contains Math Equation
-    for i in range (len(user_input)):
-        if (user_input[i]!=""):
-            user_prompt += "- "+ cor_prompts[i] + "\n"
-    # print(user_prompt)
-    for pno, txt in tqdm(page_texts, desc="Translating to LaTeX"):
-        user_msg = USER_LATEX_TMPL.format(page_text=txt)
-        body = llm_chat(SYSTEM_LATEX + user_prompt, user_msg, api_key=api_key).strip()
+        user_prompt = user_input[0]
+        cor_prompts = [
+            ". ",
+            "User input contains math formula. Translate those into latex. ",
+            f"IMPORTANT: Translate all the text into {user_input[2]} BEFORE GENERATING TEXT \n \
+              - Make sure the generated text is compatible with {cor[user_input[2]]}",
+        ]
+        for i in range(len(user_input)):
+            if user_input[i] != "":
+                user_prompt += "- " + cor_prompts[i] + "\n"
 
-        # Save per-page body
-        page_body_path = os.path.join(out_dir, f"page_{pno:03d}.tex")
-        with open(page_body_path, "w", encoding="utf-8") as f:
-            f.write(body + "\n")
-        parts.append((pno, page_body_path))
+        # Send each page separately
+        for pno, img_part in page_extracted:
+            # Build content parts for this single page
+            page_parts = [
+                {"type": "text", "text": USER_MSG},  # your fixed user message
+                img_part,                            # the page image
+            ]
 
-    # 4) Assemble master LaTeX
-    master_path = os.path.join(out_dir, "master.tex")
-    with open(master_path, "w", encoding="utf-8") as f:
-        f.write(make_master_preamble(title,user_input[2]))
-        for pno, body_path in parts:
-            # f.write(f"% --- Page {pno} ---\n")
-            # f.write("\\clearpage\n")
-            # f.write(f"\\section*{{Page {pno}}}\n\n")
-            with open(body_path, "r", encoding="utf-8") as b:
-                content = b.read()
-            # ensure trailing newline so pages don’t concatenate on one line
-            if not content.endswith("\n"):
-                content += "\n"
-            f.write(content)
-        f.write(make_master_epilogue())
+            body = llm_chat(
+                SYSTEM_LATEX + user_prompt,  # system content
+                USER_MSG,                    # (kept for signature; actual text is in page_parts[0])
+                page_parts,                  # <-- list of parts, not raw bytes/dict
+                api_key=api_key,
+            ).strip()
 
-    print(f"Wrote master LaTeX: {master_path}")
+            # Save per-page body
+            page_body_path = os.path.join(out_dir, f"page_{pno:03d}.tex")
+            with open(page_body_path, "w", encoding="utf-8") as f:
+                f.write(body + "\n")
+            parts_written.append((pno, page_body_path))
 
-    # 5) Compile (optional)
-    if compile_flag:
-        print("Compiling PDF...")
-        try:
-            compile_pdf(master_path, engine="xelatex")
-            print("PDF compiled successfully.")
-        except subprocess.CalledProcessError as e:
-            print("LaTeX compile failed.\n--- xelatex output ---\n")
-            # print(e.output or "")
-            # sys.exit(3)
+        # Assemble master LaTeX
+        master_path = os.path.join(out_dir, "master.tex")
+        with open(master_path, "w", encoding="utf-8") as f:
+            f.write(make_master_preamble(title, user_input[2]))
+            for pno, body_path in parts_written:
+                with open(body_path, "r", encoding="utf-8") as b:
+                    content = b.read()
+                if not content.endswith("\n"):
+                    content += "\n"
+                f.write(content)
+            f.write(make_master_epilogue())
 
+        print(f"Wrote master LaTeX: {master_path}")
 
+        if compile_flag:
+            print("Compiling PDF...")
+            try:
+                compile_pdf(master_path, engine="xelatex")
+                print("PDF compiled successfully.")
+            except subprocess.CalledProcessError:
+                print("LaTeX compile failed.\n--- xelatex output ---\n")
+    except Exception as e:
+        raise e
+    finally:
+        doc.close()
 # --- CLI ---
 def main():
     ap = argparse.ArgumentParser(

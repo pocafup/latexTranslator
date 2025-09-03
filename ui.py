@@ -31,6 +31,8 @@ with st.expander("Engine & Model Settings", expanded=True):
         index=0,
         help="OpenAI: api.openai.com; Ollama: http://localhost:11434; Custom: your own gateway.",
     )
+    if (engine_choice == "Ollama (local)"):
+        st.caption(":red[This function has not been updated. Please select something else.]")
     colA, colB = st.columns(2)
     
     urlMap = {"OpenAI (cloud)": "https://api.openai.com/v1", "Ollama (local)": "http://localhost:11434", "Custom": "Enter Your LLM Domain"}
@@ -154,7 +156,6 @@ if run_btn:
             master_pdf = out_dir / "master.pdf"
             master_zip = out_dir / "master.zip"
             page_files = sorted(out_dir.glob("page_*.tex"))
-            
 
             with zipfile.ZipFile(master_zip, 'w', zipfile.ZIP_DEFLATED, False) as zipf: 
                 if master_tex.exists():
