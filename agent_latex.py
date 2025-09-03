@@ -52,6 +52,8 @@ OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstr
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
 
+__DEBUG__ = False
+
 # --- PDF extraction ---
 try:
     import pymupdf as fitz  # PyMuPDF
@@ -70,20 +72,6 @@ SYSTEM_LATEX = """You are a LaTeX writer. Convert the given math lecture page in
 - Use standard packages only: amsmath, amssymb, tikz, geometry, lmodern, fontenc, mathtools if needed.
 - If the input is partial or noisy, produce your best faithful reconstruction.
 - IMPORTANT: Return ONLY the LaTeX BODY content (no \\documentclass or \\begin{document}).
-"""
-
-USER_LATEX_TMPL = """Source page text (raw, may include noise):
---- BEGIN PAGE TEXT ---
-{page_text}
---- END PAGE TEXT ---
-
-Instructions:
-- Output ONLY LaTeX body content for this page.
-- Wrap displayed equations in equation/align as appropriate.
-- Use \\section*{{...}} or \\subsection*{{...}} for headings you detect.
-- If appropriate, add a small TikZ sketch that matches the page's figure(s).
-- Ensure the output compiles in a standard article preamble.
-- Target language varies, English if not specified
 """
 
 USER_MSG = """Recognize and translate the pdf into a latex file
@@ -241,10 +229,8 @@ def make_master_epilogue() -> str:
 
 
 def compile_pdf(tex_path: str, engine: str = "xelatex") -> None:
-    import subprocess, os
     tex_dir = os.path.dirname(os.path.abspath(tex_path)) or "."
     fname = os.path.basename(tex_path)
-
     def run_once():
         proc = subprocess.run(
             [engine, "-interaction=nonstopmode", fname],
@@ -253,10 +239,9 @@ def compile_pdf(tex_path: str, engine: str = "xelatex") -> None:
             stderr=subprocess.STDOUT,
             text=True,
         )
-        # Always echo the output so you can see warnings/errors
-        print(proc.stdout)
+        if __DEBUG__:
+            print(proc.stdout)
         if proc.returncode != 0:
-            # Re-raise with the captured log attached
             raise subprocess.CalledProcessError(proc.returncode, proc.args, output=proc.stdout)
 
     run_once()  # 1st pass
@@ -278,9 +263,8 @@ def run(
         pages = parse_pages_arg(pages_arg, max_pages)
         if not pages:
             print(f"No valid pages selected in range 1..{max_pages}.", file=sys.stderr)
-            sys.exit(2)
+            raise RuntimeError(f"No valid pages selected in range 1..{max_pages}.", file=sys.stderr)
 
-        # extract_page should be the version that returns [(pno, {"type":"image_url", ...})]
         page_extracted = extract_page(doc, pages)
 
         out_dir = os.path.abspath(out_prefix)
@@ -341,7 +325,8 @@ def run(
                 print("PDF compiled successfully.")
             except subprocess.CalledProcessError:
                 print("LaTeX compile failed.\n--- xelatex output ---\n")
-
+    except Exception as e:
+        raise e
     finally:
         doc.close()
 # --- CLI ---
