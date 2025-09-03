@@ -23,7 +23,6 @@ def compile_pdf(tex_path: str, engine: str = "xelatex") -> None:
 
     run_once()  # 1st pass
     run_once()  # 2nd pass
-
 try:
     compile_pdf(master_path, engine="xelatex")
 except Exception as e:

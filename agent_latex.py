@@ -83,6 +83,7 @@ Instructions:
 - Ensure the output compiles in a standard article preamble.
 - Target language varies, English if not specified
 """
+
 cor = { "Chinese" : "Noto Serif CJK SC",
         "Japanese": "Noto Serif CJK JP",
         "Korean"  : "Noto Serif CJK KR",
@@ -103,7 +104,6 @@ def llm_chat(system_msg: str, user_msg:str, page: List[dict], api_key: str) -> s
 
     if use_openai:
         client = OpenAI(api_key=api_key)
-
         completion = client.chat.completions.create(
             model="gpt-4o",
             messages=[
@@ -112,7 +112,6 @@ def llm_chat(system_msg: str, user_msg:str, page: List[dict], api_key: str) -> s
             ],
         )
         return completion.choices[0].message.content
-        
         
     else:
         # Ollama native chat
@@ -222,6 +221,7 @@ def make_master_preamble(title: str = "Translated Document", language: str = "En
 \begin{document}
 \maketitle
 """
+
 
 def make_master_epilogue() -> str:
     return r"""\end{document}

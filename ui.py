@@ -156,7 +156,7 @@ if run_btn:
             master_pdf = out_dir / "master.pdf"
             master_zip = out_dir / "master.zip"
             page_files = sorted(out_dir.glob("page_*.tex"))
-            
+
             with zipfile.ZipFile(master_zip, 'w', zipfile.ZIP_DEFLATED, False) as zipf: 
                 if master_tex.exists():
                     zipf.write(master_tex,arcname=master_tex.name)
