@@ -52,7 +52,7 @@ OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstr
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
 
-__DEBUG__ = False
+__DEBUG__ = True
 
 # --- PDF extraction ---
 try:
@@ -209,10 +209,9 @@ def make_master_preamble(title: str = "Translated Document", language: str = "En
 \newunicodechar{−}{\ensuremath{-}}
 \usepackage{tikz}
 """ + f"\\setCJKmainfont{{{cor[language]}}}\n" + r"""\defaultfontfeatures{Ligatures=TeX}
-\setmainfont{Times New Roman}
-\setsansfont{Arial}
-\usetikzlibrary{arrows.meta}
-\setmonofont{Courier New}
+\setmainfont{Liberation Serif}
+\setsansfont{Liberation Sans}
+\setmonofont{Liberation Mono} 
 \setlength{\parskip}{0.6em}
 \setlength{\parindent}{0pt}
 

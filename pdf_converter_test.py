@@ -1,6 +1,6 @@
 
 import subprocess, os
-master_path = "/Users/pocafup/latexTranslator/translated_output/master.tex"
+master_path = "/latextranslator/translated_output/master.tex"
 
 def compile_pdf(tex_path: str, engine: str = "xelatex") -> None:
     tex_dir = os.path.dirname(os.path.abspath(tex_path)) or "."
