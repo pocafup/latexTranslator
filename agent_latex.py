@@ -4,8 +4,9 @@ from typing import List, Tuple
 from dataclasses import dataclass
 from dotenv import load_dotenv
 from tqdm import tqdm
-from constants import SYSTEM_LATEX,SYSTEM_TOC,USER_MSG,CONTENT_PAGE,cor,HEADING_PATTERNS
-
+from constants.constants import SYSTEM_LATEX,SYSTEM_TOC,USER_MSG,CONTENT_PAGE,cor,HEADING_PATTERNS
+from sanitization.sanitize_llm import sanitize_for_xelatex
+from functions.latex_formatter import make_master_preamble, make_master_epilogue
 # --- Config / Env ---
 load_dotenv()
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
@@ -23,7 +24,7 @@ except Exception as e:
 
 
 # --- LLM call ---
-def llm_chat(system_msg: str, user_msg:str, page: List[dict], api_key: str) -> str:
+def llm_chat(system_msg: str, user_msg:str, page: List[dict], api_key: str, model: str = "gpt-4o") -> str:
     """
     Dual-path client:
     - If OPENAI_BASE_URL ends with '/v1' or contains 'api.openai.com': use OpenAI Chat Completions.
@@ -36,7 +37,7 @@ def llm_chat(system_msg: str, user_msg:str, page: List[dict], api_key: str) -> s
     if use_openai:
         client = OpenAI(api_key=api_key)
         completion = client.chat.completions.create(
-            model="gpt-4o",
+            model=model,
             messages=[
                 {"role": "system", "content": system_msg},
                 {"role": "user","content": page},
@@ -48,7 +49,7 @@ def llm_chat(system_msg: str, user_msg:str, page: List[dict], api_key: str) -> s
         # Ollama native chat
         url = f"{OPENAI_BASE_URL}/api/chat"
         body = {
-            "model": OPENAI_MODEL,
+            "model": model,
             "stream": False,
             "messages": [
                 {"role": "system", "content": system_msg},
@@ -65,31 +66,6 @@ def llm_chat(system_msg: str, user_msg:str, page: List[dict], api_key: str) -> s
         if not msg and "choices" in data:
             msg = data["choices"][0]["message"]["content"]
         return msg
-
-def content_page_generation(master_tex: str, api_key: str):
-    with open(master_tex, 'r', encoding='utf-8') as f:
-        doc_src = f.read()
-
-    # Feed the FULL document as the user content
-    parts = [{"type": "text", "text": doc_src}]
-    edited = sanitize_for_xelatex(llm_chat(
-        system_msg=CONTENT_PAGE,
-        user_msg="Insert the contents page per rules.",
-        page=parts,
-        api_key=api_key,
-    ).strip())
-    print("Edited: ", edited)
-
-    # Basic sanity checks so we don't clobber a good file with junk
-    must_have = ["\\documentclass", "\\begin{document}", "\\end{document}", "\\tableofcontents"]
-    if not all(token in edited for token in must_have):
-        raise RuntimeError("LLM did not return a valid LaTeX file with a table of contents.")
-
-    if "% === TOC_ANCHOR_AFTER_MAKETITLE ===" not in doc_src:
-        # In case someone uses an older preamble without the anchor
-        raise RuntimeError("TOC anchor not found in master.tex preamble; update make_master_preamble().")
-
-    return edited
 
 # --- Utilities ---
 def parse_pages_arg(pages_arg: str, max_pages: int) -> List[int]:
@@ -110,15 +86,15 @@ def parse_pages_arg(pages_arg: str, max_pages: int) -> List[int]:
                 for p in range(a, b + 1):
                     if 1 <= p <= max_pages:
                         result.add(p)
-            except:
-                continue
+            except Exception as e:
+                raise ValueError(f"Invalid page range. Error: {e}")
         else:
             try:
                 p = int(part)
                 if 1 <= p <= max_pages:
                     result.add(p)
-            except:
-                continue
+            except Exception as e:
+                raise ValueError(f"Invalid page number. Error: {e}")
     return sorted(result)
 
 def extract_page(doc: fitz.Document, pages: List[int], max_width: int = 1600, jpg_quality: int = 80):
@@ -133,117 +109,6 @@ def extract_page(doc: fitz.Document, pages: List[int], max_width: int = 1600, jp
         data_url = "data:image/jpeg;base64," + base64.b64encode(jpg).decode("ascii")
         out.append((i, {"type": "image_url", "image_url": {"url": data_url}}))
     return out
-
-def _sanitize_toc_title(s: str) -> str:
-    # remove inline math variants
-    s = re.sub(r'\\\((.*?)\\\)', r'\1', s)   # \( ... \) -> ...
-    s = re.sub(r'\\\[(.*?)\\\]', r'\1', s)   # \[ ... \] -> ...
-    s = re.sub(r'\$(.*?)\$', r'\1', s)       # $ ... $   -> ...
-    # strip other fragile bits you don’t want in ToC text
-    s = re.sub(r'\\textbf\{([^}]*)\}', r'\1', s)
-    s = re.sub(r'\\emph\{([^}]*)\}', r'\1', s)
-    s = re.sub(r'\\[a-zA-Z]+\*?(?:\[[^\]]*\])?(?:\{[^}]*\})?', '', s)  # drop stray macros
-    # escape specials
-    s = s.replace('%', r'\%').replace('#', r'\#').replace('&', r'\&')
-    s = s.replace('{', r'\{').replace('}', r'\}')
-    return s.strip()
-
-def inject_toc_entries(tex: str) -> str:
-    def _inject(tex, pat, level):
-        out, i = [], 0
-        for m in re.finditer(pat, tex):
-            start, end = m.span()
-            raw_title = m.group(1).strip()
-            toc_title = _sanitize_toc_title(raw_title)
-
-            out.append(tex[i:start])
-            out.append(m.group(0))
-
-            window = tex[end:end+200]
-            already = re.search(
-                r'\\addcontentsline\{toc\}\{' + re.escape(level) + r'\}\{', window
-            )
-            if not already:
-                out.append(f'\n\\addcontentsline{{toc}}{{{level}}}{{{toc_title}}}')
-            i = end
-        out.append(tex[i:])
-        return ''.join(out)
-
-    for pat, level in HEADING_PATTERNS:
-        tex = _inject(tex, pat, level)
-    return tex
-
-
-def ensure_phantomsection(tex: str) -> str:
-    """
-    Insert \\phantomsection immediately before each \\addcontentsline{toc}{...}{...}
-    so hyperref has a proper anchor and doesn't drop the entry.
-    """
-    return re.sub(
-        r'(?<!\\phantomsection)\s*(\n\\addcontentsline\{toc\}\{(?:section|subsection|subsubsection)\}\{)',
-        r'\n\\phantomsection\1',
-        tex
-    )
-
-def sanitize_for_xelatex(tex: str) -> str:
-    # Remove any CJK environments (if the model ignores instructions)
-    tex = re.sub(r'\\begin\{CJK\}.*?\\end\{CJK\}', '', tex, flags=re.S|re.I)
-    tex = re.sub(r'\\begin\{CJK\*?\}.*?\\end\{CJK\*?\}', '', tex, flags=re.S|re.I)
-    tex = re.sub(r'\\end\{CJK\*?\}', '', tex, flags=re.I)
-    tex = re.sub(r'\\begin\{CJK\*?\}(?:\[[^\]]*\])?(?:\{[^}]*\}){0,3}', '', tex, flags=re.I)
-    # Remove package lines if they slip in
-    tex = re.sub(r'\\usepackage(?:\[[^\]]*\])?\{CJK\*?u?t?f?8?\}', '', tex, flags=re.I)
-    return tex
-
-def latex_escape(text: str) -> str:
-    # Minimal escaping for common special chars in LaTeX titles
-    repl = {
-        "\\": r"\textbackslash{}", 
-        "&": r"\&",
-        "%": r"\%",
-        "$": r"\$",
-        "#": r"\#",
-        "_": r"\_",
-        "{": r"\{",
-        "}": r"\}",
-        "~": r"\textasciitilde{}",
-        "^": r"\textasciicircum{}",
-    }
-    for k, v in repl.items():
-        text = text.replace(k, v)
-    return text
-
-def make_master_preamble(title: str = "Translated Document", language: str = "English") -> str:
-    t = latex_escape(title)
-    return r"""\documentclass[11pt]{article}
-\usepackage[margin=1in]{geometry}
-\usepackage{fontspec}
-\usepackage{xeCJK}
-\usepackage[english,spanish,es-noshorthands]{babel}
-\usepackage{newunicodechar}
-\usepackage{amsmath,amssymb,mathtools}
-\newunicodechar{−}{\ensuremath{-}}
-\usepackage{tikz}
-\usepackage[hidelinks]{hyperref} % for clickable ToC links
-""" + f"\\setCJKmainfont{{{cor[language]}}}\n" + r"""\defaultfontfeatures{Ligatures=TeX}
-\setmainfont{Liberation Serif}
-\setsansfont{Liberation Sans}
-\setmonofont{Liberation Mono}
-\setlength{\parskip}{0.6em}
-\setlength{\parindent}{0pt}
-
-\title{""" + t + r"""}
-\date{}
-\begin{document}
-\maketitle
-\setcounter{tocdepth}{2}
-% === TOC_ANCHOR_AFTER_MAKETITLE ===
-"""
-
-def make_master_epilogue() -> str:
-    return r"""\end{document}
-"""
-
 
 def compile_pdf(tex_path: str, engine: str = "xelatex", passes: int = 2) -> None:
     tex_dir = os.path.dirname(os.path.abspath(tex_path)) or "."
@@ -272,6 +137,7 @@ def run(
     api_key: str,
     user_input: list[str],
     content_page: bool,
+    model:str,
 ):
     doc = fitz.open(pdf_path)
     try:
@@ -287,7 +153,6 @@ def run(
         os.makedirs(out_dir, exist_ok=True)
 
         parts_written = []
-
         user_prompt = user_input[0]
         cor_prompts = [
             ". ",
@@ -299,6 +164,8 @@ def run(
             if user_input[i] != "":
                 user_prompt += "- " + cor_prompts[i] + "\n"
 
+        if content_page:
+            user_prompt += CONTENT_PAGE
         # Send each page separately
         for pno, img_part in page_extracted:
             # Build content parts for this single page
@@ -312,6 +179,7 @@ def run(
                 USER_MSG,                    # (kept for signature; actual text is in page_parts[0])
                 page_parts,                  # <-- list of parts, not raw bytes/dict
                 api_key=api_key,
+                model=model,
             ).strip())
 
             # Save per-page body
@@ -323,7 +191,7 @@ def run(
         # Assemble master.tex (unchanged)
         master_path = os.path.join(out_dir, "master.tex")
         with open(master_path, "w", encoding="utf-8") as f:
-            f.write(make_master_preamble(title, user_input[2]))
+            f.write(make_master_preamble(title, user_input[2], content_page))
             for pno, body_path in parts_written:
                 with open(body_path, "r", encoding="utf-8") as b:
                     content = b.read()
@@ -331,29 +199,13 @@ def run(
                     content += "\n"
                 f.write(content)
             f.write(make_master_epilogue())
-
-        # NEW: retrofit \addcontentsline for starred headings BEFORE LLM edit
-        with open(master_path, "r", encoding="utf-8") as f:
-            src = f.read()
-
-        fixed = ensure_phantomsection(inject_toc_entries(src))
-        if fixed != src:
-            with open(master_path, "w", encoding="utf-8") as f:
-                f.write(fixed)
-
-        # Now let the LLM insert the ToC based on the actual master.tex
-        if content_page:
-            edited = content_page_generation(master_path, api_key)
-            edited = sanitize_for_xelatex(edited)  # keep this if you already have it
-            with open(master_path, "w", encoding="utf-8") as f:
-                f.write(edited) 
         
         print(f"Wrote master LaTeX: {master_path}")
 
         if compile_flag:
             print("Compiling PDF...")
             try:
-                compile_pdf(master_path, engine="xelatex",passes=2)
+                compile_pdf(master_path, engine="xelatex",passes=5)
                 print("PDF compiled successfully.")
             except subprocess.CalledProcessError:
                 print("LaTeX compile failed.\n--- xelatex output ---\n")

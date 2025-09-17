@@ -27,25 +27,9 @@ Instructions:
 - Target language varies, English if not specified
 """
 
-CONTENT_PAGE = r"""You are a precise LaTeX editor. You are given the FULL LaTeX document source.
-Task: Insert a 'Contents' page based on the document's headings.
-
-STRICT RULES:
-1) Insert the following EXACTLY after the line '% === TOC_ANCHOR_AFTER_MAKETITLE ===':
-   \clearpage
-   \tableofcontents
-   \clearpage
-2) For every starred heading in the BODY (\section*{T}, \subsection*{T}, \subsubsection*{T}),
-   immediately add the corresponding \addcontentsline:
-     - after \section*{T}:        \addcontentsline{toc}{section}{T}
-     - after \subsection*{T}:     \addcontentsline{toc}{subsection}{T}
-     - after \subsubsection*{T}:  \addcontentsline{toc}{subsubsection}{T}
-   Do NOT modify numbered headings.
-3) Do NOT change, rewrap, or reformat any other content. Copy all other text verbatim.
-4) Assume the preamble already loads hyperref. Do NOT edit the preamble.
-5) Return the ENTIRE modified LaTeX document (single blob), and nothing else (no explanations).
-- CRITICAL: Do NOT use the CJK package or \begin{CJK}...\end{CJK}.
-- Assume XeLaTeX + xeCJK handles Unicode; do not add any new packages.
+CONTENT_PAGE = r"""
+- Before generating section headers, add \phantomsection\addcontentsline{toc}{section}{...} to include them in the ToC.
+- Before generating subsection headers, add \phantomsection\addcontentsline{toc}{subsection}{...} to include them in the ToC.
 """
 
 SYSTEM_TOC = """You are a LaTeX assistant. Output ONLY a LaTeX BODY SNIPPET (no preamble).
