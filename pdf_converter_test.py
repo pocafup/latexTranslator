@@ -12,6 +12,7 @@ def compile_pdf(tex_path: str, engine: str = "xelatex", passes: int = 2) -> None
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
+            errors="ignore"
         )
         if proc.returncode != 0:
             raise subprocess.CalledProcessError(proc.returncode, proc.args, output=proc.stdout)

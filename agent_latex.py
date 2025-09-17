@@ -1,4 +1,5 @@
 import os,re,sys,argparse,base64,subprocess,requests,pymupdf,tempfile
+
 from openai import OpenAI
 from typing import List, Tuple
 from dataclasses import dataclass
@@ -25,6 +26,7 @@ except Exception as e:
 
 # --- LLM call ---
 def llm_chat(system_msg: str, user_msg:str, page: List[dict], api_key: str, model: str = "gpt-4o") -> str:
+
     """
     Dual-path client:
     - If OPENAI_BASE_URL ends with '/v1' or contains 'api.openai.com': use OpenAI Chat Completions.
@@ -153,6 +155,7 @@ def run(
         os.makedirs(out_dir, exist_ok=True)
 
         parts_written = []
+
         user_prompt = user_input[0]
         cor_prompts = [
             ". ",
@@ -166,6 +169,7 @@ def run(
 
         if content_page:
             user_prompt += CONTENT_PAGE
+
         # Send each page separately
         for pno, img_part in page_extracted:
             # Build content parts for this single page
@@ -175,6 +179,7 @@ def run(
             ]
 
             body = sanitize_for_xelatex(llm_chat(
+
                 SYSTEM_LATEX + user_prompt,  # system content
                 USER_MSG,                    # (kept for signature; actual text is in page_parts[0])
                 page_parts,                  # <-- list of parts, not raw bytes/dict
@@ -187,11 +192,11 @@ def run(
             with open(page_body_path, "w", encoding="utf-8") as f:
                 f.write(body + "\n")
             parts_written.append((pno, page_body_path))
-
         # Assemble master.tex (unchanged)
         master_path = os.path.join(out_dir, "master.tex")
         with open(master_path, "w", encoding="utf-8") as f:
             f.write(make_master_preamble(title, user_input[2], content_page))
+
             for pno, body_path in parts_written:
                 with open(body_path, "r", encoding="utf-8") as b:
                     content = b.read()
@@ -206,6 +211,7 @@ def run(
             print("Compiling PDF...")
             try:
                 compile_pdf(master_path, engine="xelatex",passes=5)
+
                 print("PDF compiled successfully.")
             except subprocess.CalledProcessError:
                 print("LaTeX compile failed.\n--- xelatex output ---\n")
