@@ -40,8 +40,11 @@ with st.expander("Engine & Model Settings", expanded=True):
     apikeyMap = {"OpenAI (cloud)": "sk-...", "Ollama (local)": "ollama", "Custom": None}
     with colA:
         base_url = st.text_input("Base URL", value=urlMap[engine_choice])
-        model = st.text_input("Model", value=modelMap[engine_choice])
-        
+        if (engine_choice != "OpenAI (cloud)"):
+            model = st.text_input("Model", value=modelMap[engine_choice])
+        else:
+            models = ["gpt-4o","gpt-5","gpt-4.1"]
+            model = st.selectbox("Model",models)
     with colB:
         title = st.text_input("Document Title", value="Translated Document")
         api_key = st.text_input("API Key", type="password", placeholder=apikeyMap[engine_choice])
@@ -55,6 +58,8 @@ with st.expander("Customization Settings", expanded = True):
         languages = ["English","Chinese","Spanish","Japanese","Korean","Other"]
         language_selected = st.selectbox("Language To Translate",languages)
     user_input = [user_prompt,math_equation,language_selected ]
+
+    content_page = st.checkbox("Generate a Content Page",value=False)
 
 with st.expander("PDF & Translation Settings", expanded=True):
     uploaded = st.file_uploader("Upload PDF", type=["pdf"])
@@ -145,6 +150,7 @@ if run_btn:
                         title,
                         api_key.strip(),
                         user_input,
+                        content_page,
                     )
                     elapsed = time.time() - start
 

@@ -1,50 +1,10 @@
-#save: 
-
-# # Latin
-# brew install --cask font-noto-serif font-noto-sans font-noto-sans-mono
-
-# # CJK (pick Serif or Sans; you can install both)
-# brew install --cask font-noto-serif-cjk-sc font-noto-serif-cjk-jp font-noto-serif-cjk-kr
-# brew install --cask font-noto-sans-cjk-sc   font-noto-sans-cjk-jp   font-noto-sans-cjk-kr
-
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""
-agent_latex.py
-Translate selected PDF page(s) to clean LaTeX (no handwriting), including equations
-and simple diagrams redrawn in TikZ. Works with OpenAI API *or* local Ollama.
-
-Usage examples:
-  # Page 11 only, produce .tex but do not compile
-  python agent_latex.py --pdf "1.pdf" --pages 11 --out "out_page11" --no-compile
-
-  # Range of pages and compile
-  python agent_latex.py --pdf "1.pdf" --pages 11-13 --out "translated" --compile
-
-Environment (.env or shell):
-  OPENAI_BASE_URL= https://api.openai.com/v1           # or http://localhost:11434
-  OPENAI_API_KEY=   sk-...                             # "ollama" if using local
-  OPENAI_MODEL=     gpt-4o                             # or llama3.1:8b, etc.
-
-Requires:
-  pip install PyMuPDF python-dotenv tqdm requests
-  (Optional compile) LaTeX toolchain: pdflatex or xelatex in PATH
-"""
-
-import os
-import re
-import sys
-import argparse
-import base64
-import subprocess
-import requests
-import pymupdf
-import tempfile
+import os,re,sys,argparse,base64,subprocess,requests,pymupdf,tempfile
 from openai import OpenAI
 from typing import List, Tuple
 from dataclasses import dataclass
 from dotenv import load_dotenv
 from tqdm import tqdm
+from constants import SYSTEM_LATEX,SYSTEM_TOC,USER_MSG,CONTENT_PAGE,cor,HEADING_PATTERNS
 
 # --- Config / Env ---
 load_dotenv()
@@ -61,35 +21,6 @@ except Exception as e:
     print("ERROR: PyMuPDF (pymupdf) is required. pip install pymupdf", file=sys.stderr)
     raise
 
-# --- Prompts ---
-SYSTEM_LATEX = """You are a LaTeX writer. Convert the given math lecture page into clean, compilable LaTeX.
-- Do NOT include any handwritten artifacts or images of text.
-- Do NOT add the ```latex or the ``` as the pdf generator cannot recognize it.
-- Have the footnote and a reference to it but do not use \cite
-- Preserve section headers and structure using \\section*, \\subsection* as appropriate.
-- If the page contains a simple analytic geometry sketch (axes, lines, vectors),
-  RECREATE it with TikZ using vector graphics (no raster images).
-- Use standard packages only: amsmath, amssymb, tikz, geometry, lmodern, fontenc, mathtools if needed.
-- If the input is partial or noisy, produce your best faithful reconstruction.
-- IMPORTANT: Return ONLY the LaTeX BODY content (no \\documentclass or \\begin{document}).
-"""
-
-USER_MSG = """Recognize and translate the pdf into a latex file
-Instructions:
-- Output ONLY LaTeX body content for this page.
-- Wrap displayed equations in equation/align as appropriate.
-- Use \\section*{{...}} or \\subsection*{{...}} for headings you detect.
-- If appropriate, add a small TikZ sketch that matches the page's figure(s).
-- Ensure the output compiles in a standard article preamble.
-- Target language varies, English if not specified
-"""
-
-cor = { "Chinese" : "Noto Serif CJK SC",
-        "Japanese": "Noto Serif CJK JP",
-        "Korean"  : "Noto Serif CJK KR",
-        "English" : "Arial",
-        "Spanish" : "Arial",
-        "": ""}
 
 # --- LLM call ---
 def llm_chat(system_msg: str, user_msg:str, page: List[dict], api_key: str) -> str:
@@ -135,6 +66,30 @@ def llm_chat(system_msg: str, user_msg:str, page: List[dict], api_key: str) -> s
             msg = data["choices"][0]["message"]["content"]
         return msg
 
+def content_page_generation(master_tex: str, api_key: str):
+    with open(master_tex, 'r', encoding='utf-8') as f:
+        doc_src = f.read()
+
+    # Feed the FULL document as the user content
+    parts = [{"type": "text", "text": doc_src}]
+    edited = sanitize_for_xelatex(llm_chat(
+        system_msg=CONTENT_PAGE,
+        user_msg="Insert the contents page per rules.",
+        page=parts,
+        api_key=api_key,
+    ).strip())
+    print("Edited: ", edited)
+
+    # Basic sanity checks so we don't clobber a good file with junk
+    must_have = ["\\documentclass", "\\begin{document}", "\\end{document}", "\\tableofcontents"]
+    if not all(token in edited for token in must_have):
+        raise RuntimeError("LLM did not return a valid LaTeX file with a table of contents.")
+
+    if "% === TOC_ANCHOR_AFTER_MAKETITLE ===" not in doc_src:
+        # In case someone uses an older preamble without the anchor
+        raise RuntimeError("TOC anchor not found in master.tex preamble; update make_master_preamble().")
+
+    return edited
 
 # --- Utilities ---
 def parse_pages_arg(pages_arg: str, max_pages: int) -> List[int]:
@@ -179,6 +134,67 @@ def extract_page(doc: fitz.Document, pages: List[int], max_width: int = 1600, jp
         out.append((i, {"type": "image_url", "image_url": {"url": data_url}}))
     return out
 
+def _sanitize_toc_title(s: str) -> str:
+    # remove inline math variants
+    s = re.sub(r'\\\((.*?)\\\)', r'\1', s)   # \( ... \) -> ...
+    s = re.sub(r'\\\[(.*?)\\\]', r'\1', s)   # \[ ... \] -> ...
+    s = re.sub(r'\$(.*?)\$', r'\1', s)       # $ ... $   -> ...
+    # strip other fragile bits you don’t want in ToC text
+    s = re.sub(r'\\textbf\{([^}]*)\}', r'\1', s)
+    s = re.sub(r'\\emph\{([^}]*)\}', r'\1', s)
+    s = re.sub(r'\\[a-zA-Z]+\*?(?:\[[^\]]*\])?(?:\{[^}]*\})?', '', s)  # drop stray macros
+    # escape specials
+    s = s.replace('%', r'\%').replace('#', r'\#').replace('&', r'\&')
+    s = s.replace('{', r'\{').replace('}', r'\}')
+    return s.strip()
+
+def inject_toc_entries(tex: str) -> str:
+    def _inject(tex, pat, level):
+        out, i = [], 0
+        for m in re.finditer(pat, tex):
+            start, end = m.span()
+            raw_title = m.group(1).strip()
+            toc_title = _sanitize_toc_title(raw_title)
+
+            out.append(tex[i:start])
+            out.append(m.group(0))
+
+            window = tex[end:end+200]
+            already = re.search(
+                r'\\addcontentsline\{toc\}\{' + re.escape(level) + r'\}\{', window
+            )
+            if not already:
+                out.append(f'\n\\addcontentsline{{toc}}{{{level}}}{{{toc_title}}}')
+            i = end
+        out.append(tex[i:])
+        return ''.join(out)
+
+    for pat, level in HEADING_PATTERNS:
+        tex = _inject(tex, pat, level)
+    return tex
+
+
+def ensure_phantomsection(tex: str) -> str:
+    """
+    Insert \\phantomsection immediately before each \\addcontentsline{toc}{...}{...}
+    so hyperref has a proper anchor and doesn't drop the entry.
+    """
+    return re.sub(
+        r'(?<!\\phantomsection)\s*(\n\\addcontentsline\{toc\}\{(?:section|subsection|subsubsection)\}\{)',
+        r'\n\\phantomsection\1',
+        tex
+    )
+
+def sanitize_for_xelatex(tex: str) -> str:
+    # Remove any CJK environments (if the model ignores instructions)
+    tex = re.sub(r'\\begin\{CJK\}.*?\\end\{CJK\}', '', tex, flags=re.S|re.I)
+    tex = re.sub(r'\\begin\{CJK\*?\}.*?\\end\{CJK\*?\}', '', tex, flags=re.S|re.I)
+    tex = re.sub(r'\\end\{CJK\*?\}', '', tex, flags=re.I)
+    tex = re.sub(r'\\begin\{CJK\*?\}(?:\[[^\]]*\])?(?:\{[^}]*\}){0,3}', '', tex, flags=re.I)
+    # Remove package lines if they slip in
+    tex = re.sub(r'\\usepackage(?:\[[^\]]*\])?\{CJK\*?u?t?f?8?\}', '', tex, flags=re.I)
+    return tex
+
 def latex_escape(text: str) -> str:
     # Minimal escaping for common special chars in LaTeX titles
     repl = {
@@ -201,17 +217,18 @@ def make_master_preamble(title: str = "Translated Document", language: str = "En
     t = latex_escape(title)
     return r"""\documentclass[11pt]{article}
 \usepackage[margin=1in]{geometry}
-\usepackage{fontspec}   
-\usepackage{xeCJK}      
+\usepackage{fontspec}
+\usepackage{xeCJK}
 \usepackage[english,spanish,es-noshorthands]{babel}
 \usepackage{newunicodechar}
 \usepackage{amsmath,amssymb,mathtools}
 \newunicodechar{−}{\ensuremath{-}}
 \usepackage{tikz}
+\usepackage[hidelinks]{hyperref} % for clickable ToC links
 """ + f"\\setCJKmainfont{{{cor[language]}}}\n" + r"""\defaultfontfeatures{Ligatures=TeX}
 \setmainfont{Liberation Serif}
 \setsansfont{Liberation Sans}
-\setmonofont{Liberation Mono} 
+\setmonofont{Liberation Mono}
 \setlength{\parskip}{0.6em}
 \setlength{\parindent}{0pt}
 
@@ -219,15 +236,16 @@ def make_master_preamble(title: str = "Translated Document", language: str = "En
 \date{}
 \begin{document}
 \maketitle
+\setcounter{tocdepth}{2}
+% === TOC_ANCHOR_AFTER_MAKETITLE ===
 """
-
 
 def make_master_epilogue() -> str:
     return r"""\end{document}
 """
 
 
-def compile_pdf(tex_path: str, engine: str = "xelatex") -> None:
+def compile_pdf(tex_path: str, engine: str = "xelatex", passes: int = 2) -> None:
     tex_dir = os.path.dirname(os.path.abspath(tex_path)) or "."
     fname = os.path.basename(tex_path)
     def run_once():
@@ -242,10 +260,8 @@ def compile_pdf(tex_path: str, engine: str = "xelatex") -> None:
             print(proc.stdout)
         if proc.returncode != 0:
             raise subprocess.CalledProcessError(proc.returncode, proc.args, output=proc.stdout)
-
-    run_once()  # 1st pass
-    run_once()  # 2nd pass
-
+    for i in range(passes): 
+        run_once()
 # --- Main pipeline ---
 def run(
     pdf_path: str,
@@ -255,6 +271,7 @@ def run(
     title: str,
     api_key: str,
     user_input: list[str],
+    content_page: bool,
 ):
     doc = fitz.open(pdf_path)
     try:
@@ -290,12 +307,12 @@ def run(
                 img_part,                            # the page image
             ]
 
-            body = llm_chat(
+            body = sanitize_for_xelatex(llm_chat(
                 SYSTEM_LATEX + user_prompt,  # system content
                 USER_MSG,                    # (kept for signature; actual text is in page_parts[0])
                 page_parts,                  # <-- list of parts, not raw bytes/dict
                 api_key=api_key,
-            ).strip()
+            ).strip())
 
             # Save per-page body
             page_body_path = os.path.join(out_dir, f"page_{pno:03d}.tex")
@@ -303,7 +320,7 @@ def run(
                 f.write(body + "\n")
             parts_written.append((pno, page_body_path))
 
-        # Assemble master LaTeX
+        # Assemble master.tex (unchanged)
         master_path = os.path.join(out_dir, "master.tex")
         with open(master_path, "w", encoding="utf-8") as f:
             f.write(make_master_preamble(title, user_input[2]))
@@ -315,12 +332,28 @@ def run(
                 f.write(content)
             f.write(make_master_epilogue())
 
+        # NEW: retrofit \addcontentsline for starred headings BEFORE LLM edit
+        with open(master_path, "r", encoding="utf-8") as f:
+            src = f.read()
+
+        fixed = ensure_phantomsection(inject_toc_entries(src))
+        if fixed != src:
+            with open(master_path, "w", encoding="utf-8") as f:
+                f.write(fixed)
+
+        # Now let the LLM insert the ToC based on the actual master.tex
+        if content_page:
+            edited = content_page_generation(master_path, api_key)
+            edited = sanitize_for_xelatex(edited)  # keep this if you already have it
+            with open(master_path, "w", encoding="utf-8") as f:
+                f.write(edited) 
+        
         print(f"Wrote master LaTeX: {master_path}")
 
         if compile_flag:
             print("Compiling PDF...")
             try:
-                compile_pdf(master_path, engine="xelatex")
+                compile_pdf(master_path, engine="xelatex",passes=2)
                 print("PDF compiled successfully.")
             except subprocess.CalledProcessError:
                 print("LaTeX compile failed.\n--- xelatex output ---\n")
@@ -328,45 +361,3 @@ def run(
         raise e
     finally:
         doc.close()
-# --- CLI ---
-def main():
-    ap = argparse.ArgumentParser(
-        description="Translate selected PDF pages to LaTeX (equations + TikZ)."
-    )
-    ap.add_argument("--pdf", required=True, help="Input PDF path")
-    ap.add_argument(
-        "--pages",
-        required=True,
-        help="Pages to process (e.g., '11' or '11-13' or '3,5,9-12')",
-    )
-    ap.add_argument(
-        "--out", default="translated_pages", help="Output folder (created if missing)"
-    )
-    ap.add_argument(
-        "--title", default="Translated Document", help="Title for the compiled PDF"
-    )
-    ap.add_argument(
-        "--compile",
-        dest="compile",
-        action="store_true",
-        help="Compile the LaTeX to PDF",
-    )
-    ap.add_argument(
-        "--no-compile",
-        dest="compile",
-        action="store_false",
-        help="Do not compile (default)",
-    )
-    ap.set_defaults(compile=False)
-    args = ap.parse_args()
-
-    if not OPENAI_API_KEY and "api.openai.com" in OPENAI_BASE_URL:
-        print("ERROR: OPENAI_API_KEY is required for OpenAI endpoint.", file=sys.stderr)
-        sys.exit(1)
-
-    run(args.pdf, args.pages, args.out, args.compile, args.title)
-
-
-if __name__ == "__main__":
-    main()
-
