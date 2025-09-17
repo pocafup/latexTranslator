@@ -40,8 +40,11 @@ with st.expander("Engine & Model Settings", expanded=True):
     apikeyMap = {"OpenAI (cloud)": "sk-...", "Ollama (local)": "ollama", "Custom": None}
     with colA:
         base_url = st.text_input("Base URL", value=urlMap[engine_choice])
-        model = st.text_input("Model", value=modelMap[engine_choice])
-        
+        if (engine_choice != "OpenAI (cloud)"):
+            model = st.text_input("Model", value=modelMap[engine_choice])
+        else:
+            models = ["gpt-4o","gpt-5","gpt-4.1"]
+            model = st.selectbox("Model",models)
     with colB:
         title = st.text_input("Document Title", value="Translated Document")
         api_key = st.text_input("API Key", type="password", placeholder=apikeyMap[engine_choice])
@@ -56,11 +59,13 @@ with st.expander("Customization Settings", expanded = True):
         language_selected = st.selectbox("Language To Translate",languages)
     user_input = [user_prompt,math_equation,language_selected ]
 
+    content_page = st.checkbox("Generate a Content Page",value=False)
+
 with st.expander("PDF & Translation Settings", expanded=True):
     uploaded = st.file_uploader("Upload PDF", type=["pdf"])
     pages = st.text_input("Pages (e.g., 1,3,5-9, or 1-999 for all)", value="1-999")
     out_dir_name = st.text_input("Output folder name", value="translated_output")
-    compile_pdf = st.checkbox("Compile to PDF", value=True)
+    compile_flag = st.checkbox("Compile to PDF", value=True)
 
 run_btn = st.button(
     "Generate", type="primary", use_container_width=True, disabled=(uploaded is None)
@@ -128,7 +133,7 @@ if run_btn:
                     st.write(f"**Model:** `{model}`  •  **Base URL:** `{base_url}`")
                     st.write(f"**Output folder:** `{out_dir}`")
                     st.write(
-                        f"**Pages:** `{pages}`  •  **Compile:** ``{compile_pdf}``"
+                        f"**Pages:** `{pages}`  •  **Compile:** ``{compile_flag}``"
                     )
 
                     # Monkey-patch: force engine choice by briefly patching function if you want.
@@ -138,13 +143,15 @@ if run_btn:
                     # Call the agent pipeline
                     start = time.time()
                     agent_run(
-                        str(pdf_path),
-                        pages,
-                        str(out_dir),
-                        compile_pdf,
-                        title,
-                        api_key.strip(),
-                        user_input,
+                        pdf_path=str(pdf_path),
+                        pages_arg=pages,
+                        out_prefix=str(out_dir),
+                        compile_flag=compile_flag,
+                        title=title,
+                        api_key=api_key.strip(),
+                        user_input=user_input,
+                        content_page=content_page,
+                        model=model,
                     )
                     elapsed = time.time() - start
 
@@ -160,7 +167,7 @@ if run_btn:
             with zipfile.ZipFile(master_zip, 'w', zipfile.ZIP_DEFLATED, False) as zipf: 
                 if master_tex.exists():
                     zipf.write(master_tex,arcname=master_tex.name)
-                if compile_pdf and master_pdf.exists():
+                if compile_flag and master_pdf.exists():
                     zipf.write(master_pdf,arcname=master_pdf.name)
                 if page_files:
                     for p in page_files:
@@ -184,14 +191,14 @@ if run_btn:
             else:
                 st.warning("master.tex not found (unexpected).")
 
-            if compile_pdf and master_pdf.exists():
+            if compile_flag and master_pdf.exists():
                 st.download_button(
                     "Download master.pdf",
                     data=master_pdf.read_bytes(),
                     file_name="master.pdf",
                     mime="application/pdf",
                 )
-            elif compile_pdf:
+            elif compile_flag:
                 st.warning(
                     "Compilation was requested, but master.pdf was not produced. Check LaTeX installation (MiKTeX/TeX Live)."
                 )
