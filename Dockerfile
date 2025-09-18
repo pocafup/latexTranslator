@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 # RUN tlmgr install pgf
 
-RUN pip install --upgrade pip && pip install "poetry==2.1.2"  
+RUN pip install --upgrade pip && pip install "poetry==2.1.2" stqdm 
 
 COPY pyproject.toml poetry.lock* ./
 

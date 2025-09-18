@@ -12,11 +12,12 @@ dependencies = [
     "tqdm (==4.66.4)",
     "requests (==2.32.3)",
     "streamlit (==1.37.1)",
-    "watchdog (==4.0.1)"
+    "watchdog (==4.0.1)",
+    "stqdm (==0.0.5)",
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.9, !=3.9.7"
+python = ">=3.9,<3.9.7 || >3.9.7,<4.0.0" 
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
