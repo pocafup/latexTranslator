@@ -172,6 +172,7 @@ def run(
 
         if content_page:
             user_prompt += CONTENT_PAGE
+
         # Send each page separately
         for pno, img_part in page_extracted:
             # Build content parts for this single page
