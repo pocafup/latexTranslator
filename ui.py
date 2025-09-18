@@ -7,10 +7,13 @@ import pathlib
 import traceback
 import streamlit as st
 import zipfile
+from stqdm import stqdm
 
 # Import the pipeline function from your agent
 # (assumes agent_latex.py is in the same directory)
 from agent_latex import run as agent_run
+from status import add_listener,clear_listeners
+
 
 st.set_page_config(
     page_title="PDF → LaTeX Translator", page_icon="📄", layout="centered"
@@ -59,7 +62,7 @@ with st.expander("Customization Settings", expanded = True):
         language_selected = st.selectbox("Language To Translate",languages)
     user_input = [user_prompt,math_equation,language_selected ]
 
-    content_page = st.checkbox("Generate a Content Page",value=False)
+    content_page = st.checkbox("Generate Table of Content",value=False)
 
 with st.expander("PDF & Translation Settings", expanded=True):
     uploaded = st.file_uploader("Upload PDF", type=["pdf"])
@@ -96,6 +99,13 @@ def set_env_temporarily(vars_dict):
 
 
 if run_btn:
+    st_bar = stqdm(total=100,desc="Operation in progress", bar_format="{l_bar}{bar} | {percentage:3.0f}% • {elapsed} < {remaining}")
+    clear_listeners()
+    def update_status_value(value):
+        st_bar.update(value)
+        if (st_bar.n == 100):
+            st_bar.set_description("Operation success")
+    add_listener(update_status_value)
     if uploaded is None:
         st.error("Please upload a PDF first.")
         st.stop()
@@ -142,6 +152,7 @@ if run_btn:
 
                     # Call the agent pipeline
                     start = time.time()
+                    
                     agent_run(
                         pdf_path=str(pdf_path),
                         pages_arg=pages,
@@ -153,6 +164,7 @@ if run_btn:
                         content_page=content_page,
                         model=model,
                     )
+
                     elapsed = time.time() - start
 
                     status.update(label="Done!", state="complete")

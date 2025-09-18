@@ -8,6 +8,8 @@ from tqdm import tqdm
 from constants.constants import SYSTEM_LATEX,SYSTEM_TOC,USER_MSG,CONTENT_PAGE,cor,HEADING_PATTERNS
 from sanitization.sanitize_llm import sanitize_for_xelatex
 from functions.latex_formatter import make_master_preamble, make_master_epilogue
+from status import set_total_page,update_status
+
 # --- Config / Env ---
 load_dotenv()
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
@@ -150,6 +152,7 @@ def run(
             raise RuntimeError(f"No valid pages selected in range 1..{max_pages}.", file=sys.stderr)
 
         page_extracted = extract_page(doc, pages)
+        set_total_page(len(page_extracted))
 
         out_dir = os.path.abspath(out_prefix)
         os.makedirs(out_dir, exist_ok=True)
@@ -169,7 +172,6 @@ def run(
 
         if content_page:
             user_prompt += CONTENT_PAGE
-
         # Send each page separately
         for pno, img_part in page_extracted:
             # Build content parts for this single page
@@ -192,6 +194,8 @@ def run(
             with open(page_body_path, "w", encoding="utf-8") as f:
                 f.write(body + "\n")
             parts_written.append((pno, page_body_path))
+            update_status()
+
         # Assemble master.tex (unchanged)
         master_path = os.path.join(out_dir, "master.tex")
         with open(master_path, "w", encoding="utf-8") as f:
