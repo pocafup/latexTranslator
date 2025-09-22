@@ -30,21 +30,19 @@ st.caption(
 with st.expander("Engine & Model Settings", expanded=True):
     engine_choice = st.radio(
         "Model backend",
-        ["OpenAI (cloud)", "Ollama (local)", "Custom"],
+        ["OpenAI (cloud)", "Mathpix (cloud)", "Custom"],
         index=0,
-        help="OpenAI: api.openai.com; Ollama: http://localhost:11434; Custom: your own gateway.",
+        help="OpenAI: api.openai.com; Mathpix: api.mathpix.com; Custom: your own gateway.",
     )
-    if (engine_choice == "Ollama (local)"):
-        st.caption(":red[This function has not been updated. Please select something else.]")
     colA, colB = st.columns(2)
     
-    urlMap = {"OpenAI (cloud)": "https://api.openai.com/v1", "Ollama (local)": "http://localhost:11434", "Custom": "Enter Your LLM Domain"}
-    modelMap = {"OpenAI (cloud)": "gpt-4o", "Ollama (local)": "llama3.1:8b", "Custom": "Enter Your Model Name"}
-    apikeyMap = {"OpenAI (cloud)": "sk-...", "Ollama (local)": "ollama", "Custom": None}
+    urlMap = {"OpenAI (cloud)": "https://api.openai.com/v1", "Mathpix (cloud)": "https://api.mathpix.com/v3", "Custom": "Enter Your LLM Domain"}
+    modelMap = {"OpenAI (cloud)": "gpt-4o", "Mathpix (cloud)": "", "Custom": ""}
+    apikeyMap = {"OpenAI (cloud)": "sk-...", "Mathpix (cloud)": "ollama", "Custom": None}
     with colA:
         base_url = st.text_input("Base URL", value=urlMap[engine_choice])
         if (engine_choice != "OpenAI (cloud)"):
-            model = st.text_input("Model", value=modelMap[engine_choice])
+            model = st.text_input("Model", value=modelMap[engine_choice], disabled=True)
         else:
             models = ["gpt-4o","gpt-5","gpt-4.1"]
             model = st.selectbox("Model",models)
@@ -97,126 +95,127 @@ def set_env_temporarily(vars_dict):
 
     return _Ctx()
 
+if __name__ == "__main__":
 
-if run_btn:
-    st_bar = stqdm(total=100,desc="Operation in progress", bar_format="{l_bar}{bar} | {percentage:3.0f}% • {elapsed} < {remaining}")
-    clear_listeners()
-    def update_status_value(value):
-        st_bar.update(value)
-        if (st_bar.n == 100):
-            st_bar.set_description("Operation success")
-    add_listener(update_status_value)
-    if uploaded is None:
-        st.error("Please upload a PDF first.")
-        st.stop()
+    if run_btn:
+        st_bar = stqdm(total=100,desc="Operation in progress", bar_format="{l_bar}{bar} | {percentage:3.0f}% • {elapsed} < {remaining}")
+        clear_listeners()
+        def update_status_value(value):
+            st_bar.update(value)
+            if (st_bar.n == 100):
+                st_bar.set_description("Operation success")
+        add_listener(update_status_value)
+        if uploaded is None:
+            st.error("Please upload a PDF first.")
+            st.stop()
 
-    if (engine_choice == "OpenAI (cloud)") and not api_key:
-        st.error("Please provide an OpenAI API key.")
-        st.stop()
+        if (engine_choice == "OpenAI (cloud)") and not api_key:
+            st.error("Please provide an OpenAI API key.")
+            st.stop()
 
-    os.system('rm -rf ./translated_output')
+        os.system('rm -rf ./translated_output')
 
-    try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = pathlib.Path(tmpdir)
-            # Save uploaded PDF to a temp file
-            pdf_path = tmpdir_path / uploaded.name
-            with open(pdf_path, "wb") as f:
-                f.write(uploaded.read())
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                tmpdir_path = pathlib.Path(tmpdir)
+                # Save uploaded PDF to a temp file
+                pdf_path = tmpdir_path / uploaded.name
+                with open(pdf_path, "wb") as f:
+                    f.write(uploaded.read())
 
-            # Prepare output directory under the current working dir
-            out_dir = pathlib.Path(out_dir_name).absolute()
-            out_dir.mkdir(parents=True, exist_ok=True)
+                # Prepare output directory under the current working dir
+                out_dir = pathlib.Path(out_dir_name).absolute()
+                out_dir.mkdir(parents=True, exist_ok=True)
 
-            # Set environment for the agent during this run
-            env_vars = {
-                "OPENAI_BASE_URL": base_url.strip(),
-                "OPENAI_API_KEY": api_key.strip() or "",
-                "OPENAI_MODEL": model.strip(),
-            }
+                # Set environment for the agent during this run
+                env_vars = {
+                    "OPENAI_BASE_URL": base_url.strip(),
+                    "OPENAI_API_KEY": api_key.strip() or "",
+                    "OPENAI_MODEL": model.strip(),
+                }
 
-            # Run the pipeline
-            with set_env_temporarily(env_vars):
-                with st.status(
-                    "Processing… This can take a while for large PDFs.", state="running"
-                ) as status:
-                    st.write(f"**Model:** `{model}`  •  **Base URL:** `{base_url}`")
-                    st.write(f"**Output folder:** `{out_dir}`")
-                    st.write(
-                        f"**Pages:** `{pages}`  •  **Compile:** ``{compile_flag}``"
+                # Run the pipeline
+                with set_env_temporarily(env_vars):
+                    with st.status(
+                        "Processing… This can take a while for large PDFs.", state="running"
+                    ) as status:
+                        st.write(f"**Model:** `{model}`  •  **Base URL:** `{base_url}`")
+                        st.write(f"**Output folder:** `{out_dir}`")
+                        st.write(
+                            f"**Pages:** `{pages}`  •  **Compile:** ``{compile_flag}``"
+                        )
+
+                        # Monkey-patch: force engine choice by briefly patching function if you want.
+                        # Simpler: leave agent_latex's compile default (pdflatex fallback xelatex).
+                        # Or just rely on installed engines; the agent tries pdflatex then xelatex.
+
+                        # Call the agent pipeline
+                        start = time.time()
+                        
+                        agent_run(
+                            pdf_path=str(pdf_path),
+                            pages_arg=pages,
+                            out_prefix=str(out_dir),
+                            compile_flag=compile_flag,
+                            title=title,
+                            api_key=api_key.strip(),
+                            user_input=user_input,
+                            content_page=content_page,
+                            model=model,
+                        )
+
+                        elapsed = time.time() - start
+
+                        status.update(label="Done!", state="complete")
+                        st.success(f"Completed in {elapsed:.1f}s")
+
+                # Offer downloads if present
+                master_tex = out_dir / "master.tex"
+                master_pdf = out_dir / "master.pdf"
+                master_zip = out_dir / "master.zip"
+                page_files = sorted(out_dir.glob("page_*.tex"))
+
+                with zipfile.ZipFile(master_zip, 'w', zipfile.ZIP_DEFLATED, False) as zipf: 
+                    if master_tex.exists():
+                        zipf.write(master_tex,arcname=master_tex.name)
+                    if compile_flag and master_pdf.exists():
+                        zipf.write(master_pdf,arcname=master_pdf.name)
+                    if page_files:
+                        for p in page_files:
+                            zipf.write(p,arcname=p.name)
+
+                with open(master_zip, "rb") as file:
+                    st.download_button(
+                        "Download master.zip",
+                        data=file,
+                        file_name="master.zip",
+                        mime="application/zip"
                     )
-
-                    # Monkey-patch: force engine choice by briefly patching function if you want.
-                    # Simpler: leave agent_latex's compile default (pdflatex fallback xelatex).
-                    # Or just rely on installed engines; the agent tries pdflatex then xelatex.
-
-                    # Call the agent pipeline
-                    start = time.time()
-                    
-                    agent_run(
-                        pdf_path=str(pdf_path),
-                        pages_arg=pages,
-                        out_prefix=str(out_dir),
-                        compile_flag=compile_flag,
-                        title=title,
-                        api_key=api_key.strip(),
-                        user_input=user_input,
-                        content_page=content_page,
-                        model=model,
-                    )
-
-                    elapsed = time.time() - start
-
-                    status.update(label="Done!", state="complete")
-                    st.success(f"Completed in {elapsed:.1f}s")
-
-            # Offer downloads if present
-            master_tex = out_dir / "master.tex"
-            master_pdf = out_dir / "master.pdf"
-            master_zip = out_dir / "master.zip"
-            page_files = sorted(out_dir.glob("page_*.tex"))
-
-            with zipfile.ZipFile(master_zip, 'w', zipfile.ZIP_DEFLATED, False) as zipf: 
                 if master_tex.exists():
-                    zipf.write(master_tex,arcname=master_tex.name)
+                    st.subheader("Downloads")
+                    st.download_button(
+                        "Download master.tex",
+                        data=master_tex.read_bytes(),
+                        file_name="master.tex",
+                        mime="text/x-tex",
+                    )
+                else:
+                    st.warning("master.tex not found (unexpected).")
+
                 if compile_flag and master_pdf.exists():
-                    zipf.write(master_pdf,arcname=master_pdf.name)
-                if page_files:
-                    for p in page_files:
-                        zipf.write(p,arcname=p.name)
+                    st.download_button(
+                        "Download master.pdf",
+                        data=master_pdf.read_bytes(),
+                        file_name="master.pdf",
+                        mime="application/pdf",
+                    )
+                elif compile_flag:
+                    st.warning(
+                        "Compilation was requested, but master.pdf was not produced. Check LaTeX installation (MiKTeX/TeX Live)."
+                    )
 
-            with open(master_zip, "rb") as file:
-                st.download_button(
-                    "Download master.zip",
-                    data=file,
-                    file_name="master.zip",
-                    mime="application/zip"
-                )
-            if master_tex.exists():
-                st.subheader("Downloads")
-                st.download_button(
-                    "Download master.tex",
-                    data=master_tex.read_bytes(),
-                    file_name="master.tex",
-                    mime="text/x-tex",
-                )
-            else:
-                st.warning("master.tex not found (unexpected).")
-
-            if compile_flag and master_pdf.exists():
-                st.download_button(
-                    "Download master.pdf",
-                    data=master_pdf.read_bytes(),
-                    file_name="master.pdf",
-                    mime="application/pdf",
-                )
-            elif compile_flag:
-                st.warning(
-                    "Compilation was requested, but master.pdf was not produced. Check LaTeX installation (MiKTeX/TeX Live)."
-                )
-
-    except Exception as e:
-        st.error("An error occurred.")
-        st.exception(e)
-        st.text(traceback.format_exc())
+        except Exception as e:
+            st.error("An error occurred.")
+            st.exception(e)
+            st.text(traceback.format_exc())
 
