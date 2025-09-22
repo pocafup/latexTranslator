@@ -30,7 +30,9 @@ COPY pyproject.toml poetry.lock* ./
 
 RUN poetry install --no-interaction --no-ansi --no-root
 
-RUN poetry run pip install openai
+RUN poetry run pip install openai 
+
+RUN pip install pymupdf openai dotenv
 
 COPY . .
 
