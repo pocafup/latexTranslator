@@ -38,4 +38,4 @@ COPY . .
 
 EXPOSE 8501
 
-CMD ["poetry","run","streamlit","run","ui.py","--server.address=0.0.0.0","--server.headless","true","--browser.gatherUsageStats","false"]
+CMD ["poetry","run","streamlit","run","src/ui.py","--server.address=0.0.0.0","--server.headless","true","--browser.gatherUsageStats","false"]
