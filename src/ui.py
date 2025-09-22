@@ -48,6 +48,7 @@ with st.expander("Engine & Model Settings", expanded=True):
             app_id = st.text_input("App_id")
         else:
             model = st.text_input("Model", value=modelMap[engine_choice], disabled=True)
+
     with colB:
         title = st.text_input("Document Title", value="Translated Document")
         api_key = st.text_input("API Key", type="password", placeholder=apikeyMap[engine_choice])
@@ -219,4 +220,5 @@ if __name__ == "__main__":
             st.error("An error occurred.")
             st.exception(e)
             st.text(traceback.format_exc())
+
 

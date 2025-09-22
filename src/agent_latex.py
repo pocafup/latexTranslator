@@ -11,6 +11,7 @@ from functions.latex_formatter import make_master_preamble, make_master_epilogue
 from status import set_total_page,update_status
 from api.openai import openai_api
 
+
 # --- Config / Env ---
 load_dotenv()
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
@@ -25,6 +26,7 @@ try:
 except Exception as e:
     print("ERROR: PyMuPDF (pymupdf) is required. pip install pymupdf", file=sys.stderr)
     raise
+
 
 # --- Utilities ---
 def parse_pages_arg(pages_arg: str, max_pages: int) -> List[int]:
@@ -104,6 +106,7 @@ def openai_logic(pdf_path:str, user_input:List[str],api_key:str, model:str, titl
         os.makedirs(out_dir, exist_ok=True)
 
         parts_written = []
+
         user_prompt = user_input[0]
         cor_prompts = [
             ". ",
@@ -158,6 +161,7 @@ def openai_logic(pdf_path:str, user_input:List[str],api_key:str, model:str, titl
             print("Compiling PDF...")
             try:
                 compile_pdf(master_path, engine="xelatex",passes=5)
+
                 print("PDF compiled successfully.")
             except subprocess.CalledProcessError:
                 print("LaTeX compile failed.\n--- xelatex output ---\n")
@@ -165,7 +169,6 @@ def openai_logic(pdf_path:str, user_input:List[str],api_key:str, model:str, titl
         raise e
     finally:
         doc.close()
-
 
 # --- Main pipeline ---
 def run(
@@ -185,3 +188,4 @@ def run(
             )
     except Exception as e:
         raise e
+
