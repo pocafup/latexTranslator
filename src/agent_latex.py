@@ -9,6 +9,7 @@ from constants.constants import SYSTEM_LATEX,SYSTEM_TOC,USER_MSG,CONTENT_PAGE,co
 from sanitization.sanitize_llm import sanitize_for_xelatex
 from functions.latex_formatter import make_master_preamble, make_master_epilogue
 from status import set_total_page,update_status
+from api.openai import openai_api
 
 # --- Config / Env ---
 load_dotenv()
@@ -24,52 +25,6 @@ try:
 except Exception as e:
     print("ERROR: PyMuPDF (pymupdf) is required. pip install pymupdf", file=sys.stderr)
     raise
-
-
-# --- LLM call ---
-def llm_chat(system_msg: str, user_msg:str, page: List[dict], api_key: str, model: str = "gpt-4o") -> str:
-
-    """
-    Dual-path client:
-    - If OPENAI_BASE_URL ends with '/v1' or contains 'api.openai.com': use OpenAI Chat Completions.
-    - Else: assume Ollama native endpoint at .../api/chat
-    """
-    use_openai = ("api.openai.com" in OPENAI_BASE_URL) or OPENAI_BASE_URL.endswith(
-        "/v1"
-    )
-
-    if use_openai:
-        client = OpenAI(api_key=api_key)
-        completion = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_msg},
-                {"role": "user","content": page},
-            ],
-        )
-        return completion.choices[0].message.content
-        
-    else:
-        # Ollama native chat
-        url = f"{OPENAI_BASE_URL}/api/chat"
-        body = {
-            "model": model,
-            "stream": False,
-            "messages": [
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": user_msg},
-            ],
-            "options": {"temperature": 0},
-        }
-        r = requests.post(
-            url, headers={"Content-Type": "application/json"}, json=body, timeout=180
-        )
-        r.raise_for_status()
-        data = r.json()
-        msg = data.get("message", {}).get("content", "")
-        if not msg and "choices" in data:
-            msg = data["choices"][0]["message"]["content"]
-        return msg
 
 # --- Utilities ---
 def parse_pages_arg(pages_arg: str, max_pages: int) -> List[int]:
@@ -131,18 +86,8 @@ def compile_pdf(tex_path: str, engine: str = "xelatex", passes: int = 2) -> None
             raise subprocess.CalledProcessError(proc.returncode, proc.args, output=proc.stdout)
     for i in range(passes): 
         run_once()
-# --- Main pipeline ---
-def run(
-    pdf_path: str,
-    pages_arg: str,
-    out_prefix: str,
-    compile_flag: bool,
-    title: str,
-    api_key: str,
-    user_input: list[str],
-    content_page: bool,
-    model:str,
-):
+
+def openai_logic(pdf_path:str, user_input:List[str],api_key:str, model:str, title:str, content_page: bool, compile_flag: bool):
     doc = fitz.open(pdf_path)
     try:
         max_pages = len(doc)
@@ -151,6 +96,7 @@ def run(
             print(f"No valid pages selected in range 1..{max_pages}.", file=sys.stderr)
             raise RuntimeError(f"No valid pages selected in range 1..{max_pages}.", file=sys.stderr)
 
+        # Page extraction logic:
         page_extracted = extract_page(doc, pages)
         set_total_page(len(page_extracted))
 
@@ -158,13 +104,12 @@ def run(
         os.makedirs(out_dir, exist_ok=True)
 
         parts_written = []
-
         user_prompt = user_input[0]
         cor_prompts = [
             ". ",
             "User input contains math formula. Translate those into latex. ",
             f"IMPORTANT: Translate all the text into {user_input[2]} BEFORE GENERATING TEXT \n \
-              - Make sure the generated text is compatible with {cor[user_input[2]]}",
+                - Make sure the generated text is compatible with {cor[user_input[2]]}",
         ]
         for i in range(len(user_input)):
             if user_input[i] != "":
@@ -181,15 +126,12 @@ def run(
                 img_part,                            # the page image
             ]
 
-            body = sanitize_for_xelatex(llm_chat(
-
-                SYSTEM_LATEX + user_prompt,  # system content
-                USER_MSG,                    # (kept for signature; actual text is in page_parts[0])
-                page_parts,                  # <-- list of parts, not raw bytes/dict
+            body = sanitize_for_xelatex(openai_api(
                 api_key=api_key,
                 model=model,
+                system_msg= SYSTEM_LATEX + user_prompt,
+                page = page_parts,
             ).strip())
-
             # Save per-page body
             page_body_path = os.path.join(out_dir, f"page_{pno:03d}.tex")
             with open(page_body_path, "w", encoding="utf-8") as f:
@@ -216,7 +158,6 @@ def run(
             print("Compiling PDF...")
             try:
                 compile_pdf(master_path, engine="xelatex",passes=5)
-
                 print("PDF compiled successfully.")
             except subprocess.CalledProcessError:
                 print("LaTeX compile failed.\n--- xelatex output ---\n")
@@ -224,3 +165,23 @@ def run(
         raise e
     finally:
         doc.close()
+
+
+# --- Main pipeline ---
+def run(
+    payload: dict()
+):
+    globals().update(payload)
+    try:
+        if (engine_choice=="OpenAI (cloud)"):
+            openai_logic(
+                pdf_path=pdf_path,
+                user_input=user_input,
+                api_key=api_key,
+                model=model,
+                title=title,
+                content_page=content_page,
+                compile_flag=compile_flag,
+            )
+    except Exception as e:
+        raise e

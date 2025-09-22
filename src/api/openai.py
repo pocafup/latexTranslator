@@ -1,5 +1,6 @@
 from openai import OpenAI
-def opneai_api(api_key:str, model: str, system_msg:str, page:List[dict]):
+from typing import List
+def openai_api(api_key:str, model: str, system_msg:str, page:List[dict]):
     client = OpenAI(api_key=api_key)
     completion = client.chat.completions.create(
         model=model,

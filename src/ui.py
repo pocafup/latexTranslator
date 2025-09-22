@@ -41,11 +41,13 @@ with st.expander("Engine & Model Settings", expanded=True):
     apikeyMap = {"OpenAI (cloud)": "sk-...", "Mathpix (cloud)": "ollama", "Custom": None}
     with colA:
         base_url = st.text_input("Base URL", value=urlMap[engine_choice])
-        if (engine_choice != "OpenAI (cloud)"):
-            model = st.text_input("Model", value=modelMap[engine_choice], disabled=True)
-        else:
+        if (engine_choice == "OpenAI (cloud)"):
             models = ["gpt-4o","gpt-5","gpt-4.1"]
             model = st.selectbox("Model",models)
+        elif (engine_choice == "Mathpix (cloud)"):
+            app_id = st.text_input("App_id")
+        else:
+            model = st.text_input("Model", value=modelMap[engine_choice], disabled=True)
     with colB:
         title = st.text_input("Document Title", value="Translated Document")
         api_key = st.text_input("API Key", type="password", placeholder=apikeyMap[engine_choice])
@@ -134,7 +136,21 @@ if __name__ == "__main__":
                     "OPENAI_MODEL": model.strip(),
                 }
 
-                # Run the pipeline
+                # Generate Payload
+                payload = {
+                    "engine_choice": engine_choice, 
+                    "pdf_path": str(pdf_path),
+                    "app_id": locals().get("app_id"),
+                    "base_url": base_url,
+                    "pages_arg": pages,
+                    "out_prefix": str(out_dir),
+                    "compile_flag": compile_flag,
+                    "title": title,
+                    "api_key": api_key.strip(),
+                    "user_input": user_input,
+                    "content_page": content_page,
+                    "model": locals().get("model"),
+                }
                 with set_env_temporarily(env_vars):
                     with st.status(
                         "Processing… This can take a while for large PDFs.", state="running"
@@ -145,24 +161,9 @@ if __name__ == "__main__":
                             f"**Pages:** `{pages}`  •  **Compile:** ``{compile_flag}``"
                         )
 
-                        # Monkey-patch: force engine choice by briefly patching function if you want.
-                        # Simpler: leave agent_latex's compile default (pdflatex fallback xelatex).
-                        # Or just rely on installed engines; the agent tries pdflatex then xelatex.
-
-                        # Call the agent pipeline
+                       # Call the agent pipeline
                         start = time.time()
-                        
-                        agent_run(
-                            pdf_path=str(pdf_path),
-                            pages_arg=pages,
-                            out_prefix=str(out_dir),
-                            compile_flag=compile_flag,
-                            title=title,
-                            api_key=api_key.strip(),
-                            user_input=user_input,
-                            content_page=content_page,
-                            model=model,
-                        )
+                        agent_run(payload)
 
                         elapsed = time.time() - start
 
