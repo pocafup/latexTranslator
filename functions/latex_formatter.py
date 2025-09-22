@@ -24,10 +24,10 @@ def make_master_preamble(title: str = "Translated Document", language: str = "En
 \begin{document}
 \maketitle
 \setcounter{tocdepth}{2}
-""" + r"""
+""" + (r"""
 \tableofcontents
 \clearpage
-""" if ToC else "\n"
+""" if ToC else "\n")
 
 def make_master_epilogue() -> str:
     return r"""\end{document}
