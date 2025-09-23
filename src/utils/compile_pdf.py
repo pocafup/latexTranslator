@@ -1,0 +1,21 @@
+import os,subprocess
+from utils.misc import printf
+# --- Config / Env ---
+def compile_pdf(tex_path: str, engine: str = "xelatex", passes: int = 2) -> None:
+    tex_dir = os.path.dirname(os.path.abspath(tex_path)) or "."
+    fname = os.path.basename(tex_path)
+    def run_once():
+        proc = subprocess.run(
+            [engine, "-interaction=nonstopmode", fname],
+            cwd=tex_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        printf(proc.stdout)
+        if proc.returncode != 0:
+            raise subprocess.CalledProcessError(proc.returncode, proc.args, output=proc.stdout)
+    for i in range(passes): 
+        run_once()
+
+

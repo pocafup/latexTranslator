@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1.6
 FROM python:3.11-slim AS base
 
+ENV PYTHONPATH=/latextranslator
+
 WORKDIR /latextranslator
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -24,15 +26,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 # RUN tlmgr install pgf
 
-RUN pip install --upgrade pip && pip install "poetry==2.1.2" stqdm 
+RUN pip install --upgrade pip && pip install "poetry==2.1.2" stqdm pymupdf openai
 
 COPY pyproject.toml poetry.lock* ./
 
 RUN poetry install --no-interaction --no-ansi --no-root
-
-RUN poetry run pip install openai 
-
-RUN pip install pymupdf openai dotenv
 
 COPY . .
 

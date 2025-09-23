@@ -11,7 +11,7 @@ from stqdm import stqdm
 
 # Import the pipeline function from your agent
 # (assumes agent_latex.py is in the same directory)
-from agent_latex import run as agent_run
+from agent import run as agent_run
 from status import add_listener,clear_listeners
 
 
@@ -69,7 +69,6 @@ with st.expander("PDF & Translation Settings", expanded=True):
     uploaded = st.file_uploader("Upload PDF", type=["pdf"])
     pages = st.text_input("Pages (e.g., 1,3,5-9, or 1-999 for all)", value="1-999")
     out_dir_name = st.text_input("Output folder name", value="translated_output")
-    compile_flag = st.checkbox("Compile to PDF", value=True)
 
 run_btn = st.button(
     "Generate", type="primary", use_container_width=True, disabled=(uploaded is None)
@@ -134,7 +133,7 @@ if __name__ == "__main__":
                 env_vars = {
                     "OPENAI_BASE_URL": base_url.strip(),
                     "OPENAI_API_KEY": api_key.strip() or "",
-                    "OPENAI_MODEL": model.strip(),
+                    "OPENAI_MODEL": locals().get("model") or "",
                 }
 
                 # Generate Payload
@@ -144,8 +143,7 @@ if __name__ == "__main__":
                     "app_id": locals().get("app_id"),
                     "base_url": base_url,
                     "pages_arg": pages,
-                    "out_prefix": str(out_dir),
-                    "compile_flag": compile_flag,
+                    "out_dir": str(out_dir),
                     "title": title,
                     "api_key": api_key.strip(),
                     "user_input": user_input,
@@ -156,35 +154,43 @@ if __name__ == "__main__":
                     with st.status(
                         "Processing… This can take a while for large PDFs.", state="running"
                     ) as status:
-                        st.write(f"**Model:** `{model}`  •  **Base URL:** `{base_url}`")
-                        st.write(f"**Output folder:** `{out_dir}`")
-                        st.write(
-                            f"**Pages:** `{pages}`  •  **Compile:** ``{compile_flag}``"
-                        )
+                        if (engine_choice=="OpenAI (cloud)"):
+                            st.write(f"**Model:** `{model}`  •  **Base URL:** `{base_url}`")
+                            st.write(f"**Output folder:** `{out_dir}`")
+                            st.write(
+                                f"**Pages:** `{pages}` "
+                            )
 
-                       # Call the agent pipeline
+                        # Call the agent pipeline
                         start = time.time()
-                        agent_run(payload)
-
-                        elapsed = time.time() - start
-
-                        status.update(label="Done!", state="complete")
-                        st.success(f"Completed in {elapsed:.1f}s")
+                        try:
+                            agent_run(payload)
+                            elapsed = time.time() - start
+                            status.update(label="Done!", state="complete")
+                            st.success(f"Completed in {elapsed:.1f}s")
+                        except Exception as e:
+                            st.error("Translation Failed. Error: ",e)
 
                 # Offer downloads if present
                 master_tex = out_dir / "master.tex"
                 master_pdf = out_dir / "master.pdf"
                 master_zip = out_dir / "master.zip"
+                master_docx = out_dir / "master.docx"
+                master_latex_zip = out_dir / "master.tex.zip"
                 page_files = sorted(out_dir.glob("page_*.tex"))
 
-                with zipfile.ZipFile(master_zip, 'w', zipfile.ZIP_DEFLATED, False) as zipf: 
+               with zipfile.ZipFile(master_zip, 'w', zipfile.ZIP_DEFLATED, False) as zipf: 
                     if master_tex.exists():
                         zipf.write(master_tex,arcname=master_tex.name)
-                    if compile_flag and master_pdf.exists():
+                    if master_pdf.exists():
                         zipf.write(master_pdf,arcname=master_pdf.name)
                     if page_files:
                         for p in page_files:
-                            zipf.write(p,arcname=p.name)
+                            zipf.write(p,arcname=p.name) 
+                    if master_docx.exists():
+                        zipf.write(master_docx,arcname=master_docx.name)
+                    if master_latex_zip.exists():
+                        zipf.write(master_latex_zip,arcname=master_latex_zip.name)
 
                 with open(master_zip, "rb") as file:
                     st.download_button(
@@ -193,28 +199,39 @@ if __name__ == "__main__":
                         file_name="master.zip",
                         mime="application/zip"
                     )
+
                 if master_tex.exists():
-                    st.subheader("Downloads")
                     st.download_button(
                         "Download master.tex",
                         data=master_tex.read_bytes(),
                         file_name="master.tex",
                         mime="text/x-tex",
                     )
-                else:
-                    st.warning("master.tex not found (unexpected).")
-
-                if compile_flag and master_pdf.exists():
+ 
+                if master_pdf.exists():
                     st.download_button(
                         "Download master.pdf",
                         data=master_pdf.read_bytes(),
                         file_name="master.pdf",
                         mime="application/pdf",
                     )
-                elif compile_flag:
-                    st.warning(
-                        "Compilation was requested, but master.pdf was not produced. Check LaTeX installation (MiKTeX/TeX Live)."
+                
+                if master_docx.exists():
+                    st.download_button(
+                        "Download master.docx",
+                        data=master_docx.read_bytes(),
+                        file_name="master.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
                     )
+                if master_latex_zip.exists():
+                    with open(master_latex_zip,"rb") as file:
+                        st.download_button(
+                            "Download master.tex.zip",
+                            data=file,
+                            file_name="master.tex.zip",
+                            mime="application/zip",
+                        )
+                 
 
         except Exception as e:
             st.error("An error occurred.")
