@@ -1,3 +1,4 @@
+
 [project]
 name = "latextranslator"
 version = "0.1.0"
@@ -5,7 +6,7 @@ description = ""
 authors = [
     {name = "pocafup",email = "pocafup@gmail.com"}
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.11, <4.0.0"
 dependencies = [
     "pymupdf (==1.24.9)",
     "python-dotenv (==1.0.1)",
@@ -14,10 +15,9 @@ dependencies = [
     "streamlit (==1.37.1)",
     "watchdog (==4.0.1)",
     "stqdm (==0.0.5)",
+    "openai (>=1.108.2,<2.0.0)",
+    "dotenv (>=0.9.9,<0.10.0)",
 ]
-
-[tool.poetry.dependencies]
-python = ">=3.9,<3.9.7 || >3.9.7,<4.0.0" 
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
