@@ -10,9 +10,9 @@ from status import set_total_page,update_status
 from utils.misc import printf
 from typing import List, Tuple
 
-def openai_logic(pdf_path:str, pages_arg:str, out_dir:str, user_input:List[str],api_key:str, model:str, title:str, content_page: bool):
-    doc = fitz.open(pdf_path)
+def openai_logic(pdf_path:str, pages_arg:str, out_dir:str, language_selected:str, user_prompt:str ,api_key:str, model:str, title:str, content_page: bool):
     try:
+        doc = fitz.open(pdf_path)
         max_pages = len(doc)
         pages = parse_pages_arg(pages_arg, max_pages)
         if not pages:
@@ -26,19 +26,18 @@ def openai_logic(pdf_path:str, pages_arg:str, out_dir:str, user_input:List[str],
         out_dir = os.path.abspath(out_dir)
         os.makedirs(out_dir, exist_ok=True)
         parts_written = []
-        user_prompt = user_input[0]
 
-        cor_prompts = [
-            ". ",
-            "User input contains math formula. Translate those into latex. ",
-            f"IMPORTANT: Translate all the text into {user_input[2]} BEFORE GENERATING TEXT \n \
-                - Make sure the generated text is compatible with {cor[user_input[2]]}",
-        ]
-        for i in range(len(user_input)):
-            if user_input[i] != "":
-                user_prompt += "- " + cor_prompts[i] + "\n"
+        cor_prompts = f"\nUser input contains math formula. Translate those into latex.\n \
+                        IMPORTANT: Translate all the text into {language_selected} BEFORE GENERATING TEXT \n \
+                        - Make sure the generated text is compatible with {cor[language_selected]}\n"
+        
+
+        if language_selected:
+            user_prompt += cor_prompts
+
         if content_page:
             user_prompt += CONTENT_PAGE
+
         # Send each page separately
         for pno, img_part in page_extracted:
             # Build content parts for this single page
@@ -62,7 +61,7 @@ def openai_logic(pdf_path:str, pages_arg:str, out_dir:str, user_input:List[str],
         # Assemble master.tex (unchanged)
         master_path = os.path.join(out_dir, "master.tex")
         with open(master_path, "w", encoding="utf-8") as f:
-            f.write(make_master_preamble(title, user_input[2], content_page))
+            f.write(make_master_preamble(title, language_selected, content_page))
 
             for pno, body_path in parts_written:
                 with open(body_path, "r", encoding="utf-8") as b:

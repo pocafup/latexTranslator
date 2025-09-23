@@ -44,3 +44,12 @@ def extract_page(doc: fitz.Document, pages: List[int], max_width: int = 1600, jp
         out.append((i, {"type": "image_url", "image_url": {"url": data_url}}))
     return out
 
+def extract_pdf(doc: fitz.Document, pages: List[int], out_dir:str ):
+    try:
+        new_pdf = fitz.open()
+        for page in pages:
+            new_pdf.insert_pdf(doc,from_page=page,to_page=page)
+        new_pdf.save(out_dir+"/extracted.pdf")
+        return out_dir+"/extracted.pdf"
+    except Exception as e:
+        raise e

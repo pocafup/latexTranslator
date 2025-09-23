@@ -1,4 +1,4 @@
-import json,requests
+import json,requests,subprocess
 
 def mathpix(pdf_path:str,app_id:str,app_key:str) -> requests.Response:
     options = {
@@ -27,14 +27,17 @@ def mathpix_writeback(pdf_id:str, app_id:str,app_key:str,out_dir:str):
     # get docx response
     url = "https://api.mathpix.com/v3/pdf/" + pdf_id + ".docx"
     response = requests.get(url, headers=headers)
-    with open(out_dir + "/master.docx", "wb") as f:
+    master_docx = out_dir + "/master.docx"
+    master_pdf = out_dir + "/master.pdf"
+    master_latex_zip = out_dir + "/master.tex.zip"
+    with open(master_docx, "wb") as f:
         f.write(response.content)
     # get LaTeX zip file
     url = "https://api.mathpix.com/v3/pdf/" + pdf_id + ".tex"
     response = requests.get(url, headers=headers)
-    with open(out_dir + "/master.tex.zip", "wb") as f:
+    with open(master_latex_zip, "wb") as f:
         f.write(response.content)
-
+    subprocess.run(["libreoffice", "--headless", "--convert-to", "pdf", master_docx, "--outdir", out_dir])
 
 def mathpix_isprocessing(pdf_id:str,app_id:str,app_key:str) -> bool:
     headers = {
