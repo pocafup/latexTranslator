@@ -16,7 +16,8 @@ def run(
                     pdf_path=pdf_path,
                     pages_arg=pages_arg,
                     out_dir=out_dir,
-                    user_input=user_input,
+                    language_selected=language_selected,
+                    user_prompt=user_prompt, 
                     api_key=api_key,
                     model=model,
                     title=title,
@@ -27,6 +28,7 @@ def run(
                     pdf_path=pdf_path,
                     out_dir=out_dir,
                     app_key=api_key,
+                    pages_arg=pages_arg,
                     app_id=app_id,
                 )
                 

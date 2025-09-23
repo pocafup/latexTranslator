@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     texlive-lang-chinese \
     ca-certificates \
     curl \
+    libreoffice \
  && rm -rf /var/lib/apt/lists/*
 # RUN tlmgr install pgf
 
